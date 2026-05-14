@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getTopAnimes } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
-import { RankingRow } from './Home'; 
+import { RankingRow } from '../components/home/RankingRow';
 
 const cyberClipCard = { clipPath: 'polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px))' };
 

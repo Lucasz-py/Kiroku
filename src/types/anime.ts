@@ -21,6 +21,10 @@ export interface Anime {
       image_url: string;
       large_image_url: string;
     };
+    webp?: {
+      image_url: string;
+      large_image_url: string;
+    };
   };
   aired?: {
     from: string;
@@ -40,6 +44,10 @@ export interface Character {
     name: string;
     images: {
       jpg: {
+        image_url: string;
+        large_image_url: string;
+      };
+      webp?: {
         image_url: string;
         large_image_url: string;
       };

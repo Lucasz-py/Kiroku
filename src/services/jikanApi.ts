@@ -127,5 +127,5 @@ export const advancedSearchAnime = async (filters: AdvancedSearchFilters) => {
   return response.json();
 };
 
-export const getAnimeStreaming = (id: string) => 
+export const getAnimeStreaming = (id: string) =>
   fetch(`${BASE_URL}/anime/${id}/streaming`).then(res => res.json());
