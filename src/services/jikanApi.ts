@@ -8,9 +8,18 @@ export const searchAnime = async (query: string, limit: number = 10): Promise<Ji
   return response.json();
 };
 
+export const getCurrentSeason = () => {
+  const month = new Date().getMonth() + 1;
+  const year = new Date().getFullYear();
+  if (month <= 3)  return { year, season: 'winter', label: 'Invierno' };
+  if (month <= 6)  return { year, season: 'spring', label: 'Primavera' };
+  if (month <= 9)  return { year, season: 'summer', label: 'Verano' };
+  return             { year, season: 'fall',   label: 'Otoño' };
+};
+
 export const getUpcomingAnimes = async (): Promise<JikanResponse> => {
-  // Obtenemos los animes de la temporada actual (Abril = Spring)
-  const response = await fetch(`${BASE_URL}/seasons/2026/spring`);
+  const { year, season } = getCurrentSeason();
+  const response = await fetch(`${BASE_URL}/seasons/${year}/${season}`);
   if (!response.ok) throw new Error('Error al obtener temporada');
   return response.json();
 };

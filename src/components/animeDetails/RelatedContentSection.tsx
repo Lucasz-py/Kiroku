@@ -4,9 +4,10 @@ import { RelatedEntryItem } from './RelatedEntryItem';
 
 interface RelatedContentSectionProps {
   relations: AnimeRelation[];
+  imageMap: Record<number, string | null>;
 }
 
-export const RelatedContentSection = ({ relations }: RelatedContentSectionProps) => {
+export const RelatedContentSection = ({ relations, imageMap }: RelatedContentSectionProps) => {
   if (relations.length === 0) return null;
   return (
     <section className="mb-16">
@@ -23,7 +24,13 @@ export const RelatedContentSection = ({ relations }: RelatedContentSectionProps)
               {rel.relation}
             </span>
             <div className="flex flex-col gap-3">
-              {rel.entry.map(entry => <RelatedEntryItem key={entry.mal_id} entry={entry} />)}
+              {rel.entry.map(entry => (
+                <RelatedEntryItem
+                  key={entry.mal_id}
+                  entry={entry}
+                  imageUrl={imageMap[entry.mal_id]}
+                />
+              ))}
             </div>
           </div>
         ))}

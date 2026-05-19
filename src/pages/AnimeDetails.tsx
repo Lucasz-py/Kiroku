@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getAnimeById, getAnimeCharacters, getAnimeStreaming } from '../services/jikanApi';
+import { getHighResImageUrl } from '../utils/animeUtils';
 import type { AnimeFull, Character } from '../types/anime';
 import { supabase } from '../lib/supabase';
 import { Loader2 } from 'lucide-react';
@@ -26,6 +27,7 @@ export const AnimeDetails = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [progress, setProgress] = useState(0);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [relatedImages, setRelatedImages] = useState<Record<number, string | null>>({});
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +50,10 @@ export const AnimeDetails = () => {
           getAnimeStreaming(id),
         ]);
         setAnime(animeRes.data);
-        setCharacters(charsRes.data.slice(0, 18));
+        const byFav = (a: Character, b: Character) => (b.favorites ?? 0) - (a.favorites ?? 0);
+        const mains = charsRes.data.filter(c => c.role === 'Main').sort(byFav);
+        const supporting = charsRes.data.filter(c => c.role === 'Supporting').sort(byFav).slice(0, 15);
+        setCharacters([...mains, ...supporting]);
         setStreaming(streamingRes.data || []);
 
         const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -75,6 +80,45 @@ export const AnimeDetails = () => {
     };
     fetchData();
   }, [id]);
+
+  // Queue related-entry image fetches one at a time to respect Jikan's rate limit
+  useEffect(() => {
+    if (!anime?.relations) return;
+    const entries = anime.relations
+      .filter(rel => rel.relation.toLowerCase() !== 'adaptation')
+      .flatMap(rel => rel.entry)
+      .filter(e => e.type === 'anime' || e.type === 'manga');
+    if (entries.length === 0) return;
+    let cancelled = false;
+    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+    const run = async () => {
+      for (const entry of entries) {
+        if (cancelled) break;
+        try {
+          let res = await fetch(`https://api.jikan.moe/v4/${entry.type}/${entry.mal_id}`);
+          if (res.status === 429) {
+            await delay(1500);
+            if (cancelled) break;
+            res = await fetch(`https://api.jikan.moe/v4/${entry.type}/${entry.mal_id}`);
+          }
+          if (res.ok) {
+            const data = await res.json();
+            const url = getHighResImageUrl(
+              data.data?.images?.jpg?.large_image_url || data.data?.images?.jpg?.image_url
+            );
+            if (!cancelled) setRelatedImages(prev => ({ ...prev, [entry.mal_id]: url || null }));
+          } else {
+            if (!cancelled) setRelatedImages(prev => ({ ...prev, [entry.mal_id]: null }));
+          }
+        } catch {
+          if (!cancelled) setRelatedImages(prev => ({ ...prev, [entry.mal_id]: null }));
+        }
+        await delay(350);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [anime]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -204,7 +248,7 @@ export const AnimeDetails = () => {
           }}
         />
 
-        <RelatedContentSection relations={filteredRelations} />
+        <RelatedContentSection relations={filteredRelations} imageMap={relatedImages} />
         <StreamingSection streaming={filteredStreaming} />
         <TrailerSection trailer={anime.trailer} title={anime.title} />
         <CharactersGrid characters={characters} />

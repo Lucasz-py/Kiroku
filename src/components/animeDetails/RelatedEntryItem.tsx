@@ -1,30 +1,16 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
 import type { AnimeRelationEntry } from '../../types/anime';
 
 interface RelatedEntryItemProps {
   entry: AnimeRelationEntry;
+  // undefined = still loading | null = failed | string = loaded URL
+  imageUrl?: string | null;
 }
 
-export const RelatedEntryItem = ({ entry }: RelatedEntryItemProps) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(entry.type === 'anime' || entry.type === 'manga');
-
-  useEffect(() => {
-    let isMounted = true;
-    if (entry.type === 'anime' || entry.type === 'manga') {
-      fetch(`https://api.jikan.moe/v4/${entry.type}/${entry.mal_id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (isMounted && data.data?.images?.jpg?.image_url)
-            setImageUrl(data.data.images.jpg.image_url);
-        })
-        .finally(() => { if (isMounted) setIsLoading(false); });
-    }
-    return () => { isMounted = false; };
-  }, [entry.mal_id, entry.type]);
-
+export const RelatedEntryItem = ({ entry, imageUrl }: RelatedEntryItemProps) => {
+  const needsImage = entry.type === 'anime' || entry.type === 'manga';
+  const isLoading = needsImage && imageUrl === undefined;
   const isClickable = entry.type === 'anime';
 
   const ContentBody = (
@@ -33,7 +19,7 @@ export const RelatedEntryItem = ({ entry }: RelatedEntryItemProps) => {
         {isLoading
           ? <Loader2 size={14} className="text-[#FF3B3B]/50 animate-spin" />
           : imageUrl
-            ? <img src={imageUrl} alt={entry.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100" />
+            ? <img src={imageUrl} alt={entry.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100" loading="lazy" />
             : <ImageIcon size={16} className="text-zinc-600" />
         }
       </div>

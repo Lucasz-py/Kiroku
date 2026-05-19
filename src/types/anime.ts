@@ -54,6 +54,7 @@ export interface Character {
     };
   };
   role: string;
+  favorites?: number;
 }
 
 // 4. Respuesta de la lista de personajes

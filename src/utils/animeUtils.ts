@@ -11,7 +11,7 @@ export const parseDurationToMinutes = (durationStr?: string | null): number => {
 export const getHighResImageUrl = (url?: string | null): string => {
   if (!url) return '';
   if (!url.includes('cdn.myanimelist.net')) return url;
-  // Elimina el sufijo 'l' o 't' justo antes de la extensión y normaliza a .jpg
-  // Ej: /138006l.jpg → /138006.jpg | /138006l.webp → /138006.jpg
-  return url.replace(/[lt]\.(jpg|webp)$/, '.jpg');
+  // MAL CDN: suffix 'l' = large, 't' = tiny, no suffix = standard.
+  // Always upgrade to 'l' (largest available) and prefer webp when already webp.
+  return url.replace(/(?:[lt])?\.(jpg|webp)$/i, 'l.$1');
 };
