@@ -37,7 +37,7 @@ interface AnimeHeroPanelProps {
   pendingStatus: string | null;
   progress: number;
   availableStatuses: string[];
-  dropdownRef: RefObject<HTMLDivElement>;
+  dropdownRef: RefObject<HTMLDivElement | null>;
   onToggleDropdown: () => void;
   onToggleFavorite: () => void;
   onStatusSelect: (status: string) => void;
