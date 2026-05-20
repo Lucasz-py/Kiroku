@@ -45,8 +45,8 @@ export interface Achievement {
   color: string;
   glowClass?: string;
   containerClass?: string;
-  animatedLight?: string;
-  shape?: string;
+  animatedLight?: string | undefined;
+  shape?: string | undefined;
   difficulty: number;
   req: (s: UserStats) => boolean;
 }
