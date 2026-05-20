@@ -6,24 +6,6 @@ interface AchievementGalleryProps {
   unlockedAchievements: Achievement[];
 }
 
-// ─── Corona config — spinning shape placed BEHIND the medal ──────────────────
-// Larger than the medal so it extends visibly around the shape edges.
-
-const CORONA_GRADIENT: Record<number, string> = {
-  5: 'conic-gradient(from 0deg, transparent 0%, rgba(100,210,255,0.55) 4%, rgba(210,245,255,0.9) 6.5%, rgba(100,210,255,0.55) 9%, transparent 13%)',
-  6: 'conic-gradient(from 0deg, transparent 0%, rgba(30,210,230,0.85) 20%, rgba(130,70,250,0.9) 42%, transparent 64%)',
-  7: 'conic-gradient(from 0deg, #ff4080, #ff8800, #ffee00, #40ee80, #0088ff, #a040ff, #ff4080)',
-};
-const CORONA_SPEED: Record<number, string> = { 5: '4s', 6: '2.2s', 7: '0.8s' };
-
-// Extra pixels added beyond the medal size per tier (scales proportionally)
-const CORONA_EXTRA_PX: Record<number, number> = { 5: 12, 6: 16, 7: 20 };
-const getCoronaPx = (diff: number, medalSizePx: number): number | undefined => {
-  const extra = CORONA_EXTRA_PX[diff];
-  return extra !== undefined ? medalSizePx + extra : undefined;
-};
-
-// Inline fill override for tier 6-7 (richer than 2-stop Tailwind)
 const FILL_OVERRIDE: Partial<Record<number, React.CSSProperties>> = {
   6: { background: 'linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%)' },
   7: {
@@ -34,51 +16,43 @@ const FILL_OVERRIDE: Partial<Record<number, React.CSSProperties>> = {
 };
 
 const KEYFRAMES = `
-  @keyframes ach-spin     { to { transform: rotate(360deg); } }
   @keyframes ach-gradient { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+  @keyframes glow-t4 {
+    0%,100% { filter: drop-shadow(0 0 10px var(--gc)) drop-shadow(0 0 18px var(--gc2)); }
+    50%     { filter: drop-shadow(0 0 22px var(--gc)) drop-shadow(0 0 40px var(--gc2)); }
+  }
+  @keyframes glow-t5 {
+    0%,100% { filter: drop-shadow(0 0 12px var(--gc)) drop-shadow(0 0 22px var(--gc2)); }
+    50%     { filter: drop-shadow(0 0 28px var(--gc)) drop-shadow(0 0 52px var(--gc2)); }
+  }
+  @keyframes glow-t6 {
+    0%,100% { filter: drop-shadow(0 0 14px var(--gc)) drop-shadow(0 0 28px var(--gc2)); }
+    50%     { filter: drop-shadow(0 0 34px var(--gc)) drop-shadow(0 0 70px var(--gc2)); }
+  }
+  @keyframes glow-t7 {
+    0%,100% { filter: drop-shadow(0 0 18px var(--gc)) drop-shadow(0 0 40px var(--gc2)) drop-shadow(0 0 65px var(--gc3)); }
+    50%     { filter: drop-shadow(0 0 42px var(--gc)) drop-shadow(0 0 90px var(--gc2)) drop-shadow(0 0 140px var(--gc3)); }
+  }
 `;
 
-// ─── Medal renderer ───────────────────────────────────────────────────────────
+// [animation-name, duration] per difficulty tier
+const GLOW_ANIM: Partial<Record<number, [string, string]>> = {
+  4: ['glow-t4', '3s'],
+  5: ['glow-t5', '2.4s'],
+  6: ['glow-t6', '1.8s'],
+  7: ['glow-t7', '1.3s'],
+};
 
 const Medal = ({ ach, sizePx }: { ach: Achievement; sizePx: number }) => {
-  const diff      = ach.difficulty;
+  const diff       = ach.difficulty;
   const shapeStyle = ach.shape ? { clipPath: ach.shape } : { borderRadius: '9999px' };
   const fillStyle  = FILL_OVERRIDE[diff];
   const iconSize   = Math.round(sizePx * 0.44);
-  const coronaPx   = getCoronaPx(diff, sizePx);
 
   return (
-    // wrapper: glowClass (filter:drop-shadow) is applied here by the caller
     <div style={{ position: 'relative', width: sizePx, height: sizePx }}>
-
-      {/* Spinning corona — behind the medal, same shape, slightly larger */}
-      {coronaPx && (
-        <div style={{
-          position: 'absolute',
-          width:  coronaPx,
-          height: coronaPx,
-          top:    '50%',
-          left:   '50%',
-          marginTop:  -(coronaPx / 2),
-          marginLeft: -(coronaPx / 2),
-          zIndex: 0,
-        }}>
-          <div
-            className="w-full h-full"
-            style={{
-              ...shapeStyle,
-              background: CORONA_GRADIENT[diff] ?? CORONA_GRADIENT[7],
-              animation:  `ach-spin ${CORONA_SPEED[diff] ?? '2s'} linear infinite`,
-            }}
-          />
-        </div>
-      )}
-
-      {/* Medal — clean gradient, no internal spinning light */}
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={{ ...shapeStyle, zIndex: 1 }}
-      >
+      <div className="absolute inset-0 overflow-hidden" style={{ ...shapeStyle }}>
         <div
           className={fillStyle ? 'absolute inset-0' : `absolute inset-0 bg-gradient-to-br ${ach.color}`}
           style={fillStyle}
@@ -93,7 +67,46 @@ const Medal = ({ ach, sizePx }: { ach: Achievement; sizePx: number }) => {
   );
 };
 
-// ─── Gallery ──────────────────────────────────────────────────────────────────
+const extractAccentColor = (glowClass?: string): string => {
+  const match = glowClass?.match(/rgba\([^)]+\)/);
+  if (match) return match[0].replace(/[\d.]+\)$/, '0.85)');
+  return 'rgba(255,59,59,0.5)';
+};
+
+// Tailwind arbitrary drop-shadow classes are purged when generated dynamically —
+// convert to inline CSS filter string instead.
+const glowToFilter = (glowClass?: string): string | undefined => {
+  if (!glowClass) return undefined;
+  const parts = glowClass.match(/drop-shadow-\[([^\]]+)\]/g);
+  if (!parts) return undefined;
+  return parts
+    .map(p => `drop-shadow(${(p.match(/drop-shadow-\[([^\]]+)\]/)?.[1] ?? '').replace(/_/g, ' ')})`)
+    .join(' ');
+};
+
+// Extracts up to 3 rgba colors from glowClass as CSS custom properties (--gc, --gc2, --gc3).
+const glowVars = (glowClass?: string): React.CSSProperties => {
+  if (!glowClass) return {};
+  const colors = [...glowClass.matchAll(/rgba\([^)]+\)/g)].map(m => m[0]);
+  return {
+    '--gc':  colors[0] ?? 'transparent',
+    '--gc2': colors[1] ?? colors[0] ?? 'transparent',
+    '--gc3': colors[2] ?? colors[0] ?? 'transparent',
+  } as React.CSSProperties;
+};
+
+const medalGlowStyle = (ach: Achievement): React.CSSProperties => {
+  const diff = ach.difficulty;
+  if (diff <= 1) return {};
+  const anim = GLOW_ANIM[diff];
+  if (anim) {
+    return {
+      ...glowVars(ach.glowClass),
+      animation: `${anim[0]} ${anim[1]} ease-in-out infinite`,
+    };
+  }
+  return { filter: glowToFilter(ach.glowClass) };
+};
 
 export const AchievementGallery = ({ unlockedAchievements }: AchievementGalleryProps) => {
   const [selected, setSelected] = useState<Achievement | null>(null);
@@ -110,29 +123,37 @@ export const AchievementGallery = ({ unlockedAchievements }: AchievementGalleryP
 
         {unlockedAchievements.length > 0 ? (
           <div className="grid grid-cols-3 gap-3">
-            {unlockedAchievements.map(ach => (
-              <div
-                key={ach.id}
-                onClick={() => setSelected(ach)}
-                className="relative p-3 transition-all duration-200 flex flex-col items-center text-center group cursor-pointer rounded-xl bg-[#0D0F15] border border-[#FF3B3B]/[0.07] hover:border-[#FF3B3B]/25 hover:bg-[#FF3B3B]/5"
-              >
-                {/* Tooltip */}
-                <div className="absolute bottom-[105%] left-1/2 -translate-x-1/2 hidden group-hover:block w-max max-w-[160px] bg-[#11131A] border border-[#FF3B3B]/20 text-zinc-300 text-[10px] px-3 py-2 shadow-lg z-20 animate-in fade-in pointer-events-none rounded-lg">
-                  {ach.desc}
-                </div>
-
-                {/* Medal + glow wrapper */}
+            {unlockedAchievements.map(ach => {
+              const accentColor = extractAccentColor(ach.glowClass);
+              return (
                 <div
-                  className={`transition-transform duration-200 group-hover:scale-110 mb-2.5 ${ach.glowClass ?? ''}`}
+                  key={ach.id}
+                  onClick={() => setSelected(ach)}
+                  className="relative py-4 px-2 transition-all duration-200 flex flex-col items-center text-center group cursor-pointer rounded-xl bg-[#0D0F15] hover:bg-[#13151C]"
+                  style={{
+                    borderLeft:   `3px solid ${accentColor}`,
+                    borderTop:    '1px solid rgba(255,255,255,0.04)',
+                    borderRight:  '1px solid rgba(255,255,255,0.04)',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  }}
                 >
-                  <Medal ach={ach} sizePx={44} />
-                </div>
+                  <div className="absolute bottom-[105%] left-1/2 -translate-x-1/2 hidden group-hover:block w-max max-w-[160px] bg-[#11131A] border border-[#FF3B3B]/20 text-zinc-300 text-[10px] px-3 py-2 shadow-lg z-20 animate-in fade-in pointer-events-none rounded-lg">
+                    {ach.desc}
+                  </div>
 
-                <span className="text-[11px] font-bold text-zinc-400 leading-tight line-clamp-2 group-hover:text-zinc-200 transition-colors">
-                  {ach.name}
-                </span>
-              </div>
-            ))}
+                  <div
+                    className="transition-transform duration-200 group-hover:scale-110 mb-3"
+                    style={medalGlowStyle(ach)}
+                  >
+                    <Medal ach={ach} sizePx={44} />
+                  </div>
+
+                  <span className="text-[11px] font-bold text-zinc-400 leading-tight line-clamp-2 group-hover:text-zinc-200 transition-colors">
+                    {ach.name}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center py-8 gap-3">
@@ -162,8 +183,7 @@ export const AchievementGallery = ({ unlockedAchievements }: AchievementGalleryP
             </button>
 
             <div className="flex flex-col items-center text-center mt-4">
-              {/* Large medal with glow */}
-              <div className={`mb-8 ${selected.glowClass ?? ''}`}>
+              <div className="mb-8" style={medalGlowStyle(selected)}>
                 <Medal ach={selected} sizePx={144} />
               </div>
 

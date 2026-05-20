@@ -4,7 +4,7 @@ import { Tv, Heart, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { SavedAnime } from '../../types/profile';
 import { PROFILE_TABS } from '../../constants/profile';
 
-const ITEMS_PER_PAGE = 24;
+const ITEMS_PER_PAGE = 20;
 
 interface AnimeGridProps {
   animes: SavedAnime[];

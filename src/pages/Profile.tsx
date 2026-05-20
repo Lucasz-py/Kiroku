@@ -201,32 +201,30 @@ export const Profile = () => {
   // ── GSAP: stagger entrance + numeric counters ──────────────────────────────
   useGSAP(() => {
     if (loading || !pageRef.current) return;
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.profile-section',
-        { y: 28, opacity: 0, filter: 'blur(6px)' },
-        {
-          y: 0, opacity: 1, filter: 'blur(0px)',
-          stagger: 0.07, duration: 0.55, ease: 'power2.out',
-          clearProps: 'all',
-        }
-      );
 
-      counterRefs.current.forEach((el, i) => {
-        if (!el) return;
-        const target = heroStats[i].value;
-        const obj = { val: 0 };
-        gsap.to(obj, {
-          val: target,
-          duration: 1.35,
-          ease: 'power2.out',
-          delay: 0.18 + i * 0.08,
-          onUpdate() { if (el) el.textContent = Math.round(obj.val).toLocaleString(); },
-        });
+    gsap.fromTo(
+      '.profile-section',
+      { y: 28, opacity: 0, filter: 'blur(6px)' },
+      {
+        y: 0, opacity: 1, filter: 'blur(0px)',
+        stagger: 0.07, duration: 0.55, ease: 'power2.out',
+        clearProps: 'all',
+      }
+    );
+
+    counterRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const target = heroStats[i].value;
+      const obj = { val: 0 };
+      gsap.to(obj, {
+        val: target,
+        duration: 1.35,
+        ease: 'power2.out',
+        delay: 0.18 + i * 0.08,
+        onUpdate() { if (el) el.textContent = Math.round(obj.val).toLocaleString(); },
       });
-    }, pageRef);
-    return () => ctx.revert();
-  }, { scope: pageRef, dependencies: [loading, stats] });
+    });
+  }, { scope: pageRef, dependencies: [loading] });
 
   // ── LOADING ────────────────────────────────────────────────────────────────
   if (loading) return (
