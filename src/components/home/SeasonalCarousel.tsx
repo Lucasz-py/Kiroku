@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Tv } from 'lucide-react';
 import type { Anime } from '../../types/anime';
 import { AnimeCard } from '../AnimeCard';
 import { getCurrentSeason } from '../../services/jikanApi';
@@ -6,6 +7,16 @@ import { getCurrentSeason } from '../../services/jikanApi';
 interface SeasonalCarouselProps {
   upcoming: Anime[];
 }
+
+const SkeletonAnimeCard = () => (
+  <div className="w-56 shrink-0">
+    <div className="aspect-[3/4] bg-[#1A1C24] rounded-xl animate-pulse border border-[#FF3B3B]/[0.05]" />
+    <div className="pt-3 flex flex-col gap-2">
+      <div className="h-3.5 bg-[#1A1C24] rounded animate-pulse w-4/5" />
+      <div className="h-2.5 bg-[#1A1C24] rounded animate-pulse w-2/5" />
+    </div>
+  </div>
+);
 
 export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -16,8 +27,8 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
   const [isDraggingUI, setIsDraggingUI] = useState(false);
 
   const { year, label } = getCurrentSeason();
+  const isLoading = upcoming.length === 0;
 
-  // Auto-scroll — pauses while hovering or dragging
   useEffect(() => {
     let animId: number;
     const step = () => {
@@ -28,11 +39,10 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
       }
       animId = requestAnimationFrame(step);
     };
-    if (upcoming.length > 0) animId = requestAnimationFrame(step);
+    if (!isLoading) animId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animId);
-  }, [upcoming]);
+  }, [upcoming, isLoading]);
 
-  // Window-level listeners so drag works even when cursor leaves the container
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!isDragging.current || !carouselRef.current) return;
@@ -54,7 +64,7 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!carouselRef.current) return;
+    if (!carouselRef.current || isLoading) return;
     isDragging.current = true;
     startX.current = e.clientX;
     scrollLeftPos.current = carouselRef.current.scrollLeft;
@@ -64,36 +74,48 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
   const handleMouseEnter = () => { isHovered.current = true; };
   const handleMouseLeave = () => { isHovered.current = false; };
 
-  if (upcoming.length === 0) return null;
-
   return (
-    <section className="estrenos-section reveal-section pt-32 pb-48 relative z-20 bg-[#11131A] -mt-[150px]">
+    <section className="estrenos-section reveal-section relative z-20 bg-[#11131A] -mt-[120px] pt-[160px] pb-40">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/15 to-transparent" />
+
       <div className="section-content">
-        <div className="container mx-auto px-4 mb-10">
-          <h2 className="text-3xl font-black text-white flex items-center gap-4">
-            Estrenos de Temporada
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 border border-[#FF3B3B]/20 bg-[#11131A] px-4 py-2 rounded-lg">
+        <div className="container mx-auto px-4 md:px-8 max-w-[1400px] mb-8">
+          <p className="seasonal-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+            <Tv size={15} className="text-[#FF3B3B]/50" /> Esta temporada
+          </p>
+          <div className="seasonal-title flex items-center gap-4">
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              Estrenos
+            </h2>
+            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 border border-[#FF3B3B]/20 bg-[#11131A] px-3 py-1.5 rounded-lg">
               {label} {year}
             </span>
-          </h2>
+          </div>
         </div>
-        <div className="relative w-full">
+
+        <div className="seasonal-carousel relative w-full">
           <div
             ref={carouselRef}
             onMouseDown={handleMouseDown}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            className={`flex gap-6 overflow-x-auto px-6 pb-8 pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden select-none ${isDraggingUI ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`flex gap-5 overflow-x-auto px-6 md:px-8 pb-6 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden select-none ${!isLoading && isDraggingUI ? 'cursor-grabbing' : !isLoading ? 'cursor-grab' : ''}`}
           >
-            {[...upcoming, ...upcoming].map((anime, index) => (
-              <div
-                key={`${anime.mal_id}-${index}`}
-                className={`inline-block w-64 shrink-0 transition-transform duration-200 ${isDraggingUI ? 'pointer-events-none scale-[0.98] opacity-75' : ''}`}
-              >
-                <AnimeCard anime={anime} />
-              </div>
-            ))}
+            {isLoading
+              ? [...Array(8)].map((_, i) => <SkeletonAnimeCard key={i} />)
+              : [...upcoming, ...upcoming].map((anime, index) => (
+                  <div
+                    key={`${anime.mal_id}-${index}`}
+                    className={`inline-block w-56 shrink-0 transition-transform duration-200 ${isDraggingUI ? 'pointer-events-none scale-[0.98] opacity-75' : ''}`}
+                  >
+                    <AnimeCard anime={anime} />
+                  </div>
+                ))
+            }
           </div>
+
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-[#11131A] to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#11131A] to-transparent" />
         </div>
       </div>
     </section>

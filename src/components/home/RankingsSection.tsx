@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Flame } from 'lucide-react';
+import { Star, Flame } from 'lucide-react';
 import type { Anime } from '../../types/anime';
 import { RankingRow } from './RankingRow';
 
@@ -8,48 +8,84 @@ interface RankingsSectionProps {
   topPopular: Anime[];
 }
 
+const SkeletonRow = () => (
+  <div className="flex bg-[#0D0F15] rounded-xl border border-[#FF3B3B]/[0.07] overflow-hidden animate-pulse">
+    <div className="w-14 bg-[#1A1C24] shrink-0" />
+    <div className="w-24 md:w-28 h-32 md:h-36 bg-[#1A1C24] shrink-0" />
+    <div className="p-4 md:p-5 flex flex-col justify-center flex-1 gap-3">
+      <div className="h-4 bg-[#1A1C24] rounded-lg w-3/4" />
+      <div className="flex gap-2">
+        <div className="h-3 bg-[#1A1C24] rounded-lg w-16" />
+        <div className="h-3 bg-[#1A1C24] rounded-lg w-16" />
+      </div>
+      <div className="h-3 bg-[#1A1C24] rounded-lg w-28" />
+    </div>
+  </div>
+);
+
 export const RankingsSection = ({ topRated, topPopular }: RankingsSectionProps) => (
-  <section className="rankings-section pt-32 pb-32 px-4 relative z-30 bg-[#0D0F15] -mt-[120px]">
-    <div className="container mx-auto max-w-[1400px]">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 lg:gap-20">
-        <div>
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-12 border-b border-[#FF3B3B]/20 pb-6 flex items-center gap-3">
-            Top 10 Series
-            <span className="text-[#FF3B3B] drop-shadow-[0_0_8px_rgba(255,59,59,0.6)]">★</span>
+  <section className="rankings-section reveal-section relative z-30 bg-[#0D0F15] -mt-[120px] pt-24 pb-32 px-4">
+    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/10 to-transparent" />
+
+    <div className="section-content container mx-auto max-w-[1400px]">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        {/* ── Top 10 Animes ── */}
+        <div className="ranking-card-left bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6 relative">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
+
+          <p className="ranking-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2">
+            <Star size={15} className="text-[#FF3B3B]/50" /> Mejor puntuados
+          </p>
+          <h2 className="ranking-title text-2xl md:text-3xl font-black text-white mb-6 tracking-tight">
+            Top 10 Animes
           </h2>
-          <div className="flex flex-col gap-4">
-            {topRated.map((anime, index) => (
-              <RankingRow key={anime.mal_id} anime={anime} index={index} />
-            ))}
+
+          <div className="flex flex-col gap-3">
+            {topRated.length > 0
+              ? topRated.map((anime, index) => <RankingRow key={anime.mal_id} anime={anime} index={index} />)
+              : [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+            }
           </div>
-          <div className="mt-12 flex justify-center">
+
+          <div className="mt-6 pt-6 border-t border-[#FF3B3B]/10 flex justify-center">
             <Link
               to="/top/rated"
-              className="px-8 py-3 rounded-xl border border-[#FF3B3B]/30 bg-[#11131A] text-zinc-300 font-bold uppercase tracking-widest text-xs hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] hover:shadow-[0_0_20px_rgba(255,59,59,0.3)] transition-all"
+              className="px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl"
             >
-              Explorar Ranking Completo
+              Ranking Completo
             </Link>
           </div>
         </div>
-        <div>
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-12 border-b border-[#FF3B3B]/20 pb-6 flex items-center gap-3">
+
+        {/* ── Más Populares ── */}
+        <div className="ranking-card-right bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6 relative">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
+
+          <p className="ranking-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2">
+            <Flame size={15} className="text-[#FF3B3B]/50" /> Tendencias
+          </p>
+          <h2 className="ranking-title text-2xl md:text-3xl font-black text-white mb-6 tracking-tight">
             Más Populares
-            <Flame size={22} className="text-[#FF3B3B] drop-shadow-[0_0_8px_rgba(255,59,59,0.6)]" />
           </h2>
-          <div className="flex flex-col gap-4">
-            {topPopular.map((anime, index) => (
-              <RankingRow key={anime.mal_id} anime={anime} index={index} />
-            ))}
+
+          <div className="flex flex-col gap-3">
+            {topPopular.length > 0
+              ? topPopular.map((anime, index) => <RankingRow key={anime.mal_id} anime={anime} index={index} />)
+              : [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+            }
           </div>
-          <div className="mt-12 flex justify-center">
+
+          <div className="mt-6 pt-6 border-t border-[#FF3B3B]/10 flex justify-center">
             <Link
               to="/top/popular"
-              className="px-8 py-3 rounded-xl border border-[#FF3B3B]/30 bg-[#11131A] text-zinc-300 font-bold uppercase tracking-widest text-xs hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] hover:shadow-[0_0_20px_rgba(255,59,59,0.3)] transition-all"
+              className="px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl"
             >
-              Explorar Ranking Completo
+              Ranking Completo
             </Link>
           </div>
         </div>
+
       </div>
     </div>
   </section>

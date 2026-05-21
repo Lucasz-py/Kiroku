@@ -2,8 +2,23 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getTopAnimes } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react';
+import { Flame, Star, Plus, Loader2 } from 'lucide-react';
 import { RankingRow } from '../components/home/RankingRow';
+
+const SkeletonRow = () => (
+  <div className="flex bg-[#0D0F15] rounded-xl border border-[#FF3B3B]/[0.07] overflow-hidden animate-pulse">
+    <div className="w-14 bg-[#1A1C24] shrink-0" />
+    <div className="w-24 md:w-28 h-32 md:h-36 bg-[#1A1C24] shrink-0" />
+    <div className="p-4 md:p-5 flex flex-col justify-center flex-1 gap-3">
+      <div className="h-4 bg-[#1A1C24] rounded-lg w-3/4" />
+      <div className="flex gap-2">
+        <div className="h-3 bg-[#1A1C24] rounded-lg w-16" />
+        <div className="h-3 bg-[#1A1C24] rounded-lg w-16" />
+      </div>
+      <div className="h-3 bg-[#1A1C24] rounded-lg w-28" />
+    </div>
+  </div>
+);
 
 export const RankingPage = () => {
   const { filter } = useParams();
@@ -29,50 +44,50 @@ export const RankingPage = () => {
 
   const handleLoadMore = () => { const nextPage = currentPage + 1; setCurrentPage(nextPage); fetchRankings(nextPage, true); };
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-screen bg-[#11131A]">
-      <Loader2 className="animate-spin text-[#FF3B3B]" size={50} />
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-[#0D0F15] pt-32 pb-20 px-4 font-sans">
-      <div className="container mx-auto max-w-[900px]">
+    <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
+      <div className="container mx-auto max-w-[860px]">
 
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-zinc-500 hover:text-[#FF3B3B] mb-12 transition-colors uppercase text-[10px] font-bold tracking-widest px-4 py-2.5 border border-zinc-800 hover:border-[#FF3B3B]/30 bg-[#11131A] rounded-lg"
-        >
-          <ArrowLeft size={14} /> Volver
-        </Link>
-
-        <div className="mb-16 pb-8 border-b border-zinc-800">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3">Top 100</p>
-          <h1 className="text-4xl md:text-6xl font-black text-white leading-tight">
-            {title} <span className="text-[#FF3B3B]">{isPopular ? '🔥' : '★'}</span>
+        <div className="mb-10">
+          <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+            {isPopular
+              ? <Flame size={15} className="text-[#FF3B3B]/50" />
+              : <Star size={15} className="text-[#FF3B3B]/50" />
+            }
+            {isPopular ? 'Tendencias' : 'Mejor puntuados'}
+          </p>
+          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">
+            {title}
           </h1>
         </div>
 
-        <div className="flex flex-col gap-4">
-          {animes?.map((anime, index) => (
-            <RankingRow key={`${anime.mal_id}-${index}`} anime={anime} index={index} />
-          ))}
-        </div>
+        <div className="bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-4 md:p-6 relative">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent rounded-t-2xl" />
 
-        {animes.length < 100 && (
-          <div className="mt-16 flex justify-center">
-            <button
-              onClick={handleLoadMore}
-              disabled={loadingMore}
-              className="flex items-center gap-3 px-8 py-4 bg-[#11131A] border border-zinc-700 hover:border-[#FF3B3B] text-zinc-300 hover:text-[#FF3B3B] font-bold uppercase tracking-widest text-xs transition-all disabled:opacity-50 rounded-lg"
-            >
-              {loadingMore
-                ? <><Loader2 size={18} className="animate-spin text-[#FF3B3B]" /> Cargando...</>
-                : <>Cargar más registros <Plus size={16} className="text-[#FF3B3B]" /></>
-              }
-            </button>
+          <div className="flex flex-col gap-3">
+            {loading
+              ? [...Array(10)].map((_, i) => <SkeletonRow key={i} />)
+              : animes.map((anime, index) => (
+                  <RankingRow key={`${anime.mal_id}-${index}`} anime={anime} index={index} />
+                ))
+            }
           </div>
-        )}
+
+          {!loading && animes.length < 100 && animes.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-[#FF3B3B]/10 flex justify-center">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="flex items-center gap-2 px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all disabled:opacity-40 rounded-xl"
+              >
+                {loadingMore
+                  ? <><Loader2 size={14} className="animate-spin" /> Cargando...</>
+                  : <><Plus size={14} /> Cargar más</>
+                }
+              </button>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

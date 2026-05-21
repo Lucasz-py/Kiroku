@@ -196,7 +196,7 @@ export const AnimeDetails = () => {
 
   if (loading) return (
     <div className="flex justify-center items-center h-screen bg-[#0D0F15]">
-      <Loader2 size={24} className="animate-spin text-[#FF3B3B]" />
+      <Loader2 size={28} className="animate-spin text-[#FF3B3B]" />
     </div>
   );
 
@@ -215,13 +215,6 @@ export const AnimeDetails = () => {
   return (
     <div className="relative min-h-screen bg-[#0D0F15] font-sans overflow-hidden">
       <div className="relative z-10 container mx-auto p-4 md:p-8 pt-32 md:pt-36 max-w-[1350px]">
-        <Link
-          to="/search"
-          className="inline-flex items-center gap-2 mb-8 text-zinc-400 hover:text-[#FF3B3B] transition-colors text-sm font-medium"
-        >
-          <span>&larr;</span> Volver al buscador
-        </Link>
-
         <AnimeHeroPanel
           anime={anime}
           displayYear={displayYear}

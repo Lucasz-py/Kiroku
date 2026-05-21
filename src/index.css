@@ -19,14 +19,16 @@ html, body, #root {
   min-height: 100%;
 }
 
-/* Custom scrollbar estilo Cybercore */
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #080A0F;
 }
 ::-webkit-scrollbar-thumb {
-  background: #22d3ee;
+  background: #FF3B3B;
   border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF6B6B;
 }

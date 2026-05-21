@@ -4,32 +4,31 @@ import { getHighResImageUrl } from '../../utils/animeUtils';
 
 const getRankStyle = (index: number) => {
   switch (index) {
-    case 0: return 'bg-gradient-to-br from-amber-400 to-yellow-600 text-amber-950 font-black';
-    case 1: return 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-950 font-black';
-    case 2: return 'bg-gradient-to-br from-amber-700 to-orange-800 text-white font-black';
-    default: return 'bg-[#1A1C24] text-zinc-500 font-bold';
+    case 0: return 'bg-gradient-to-b from-amber-400 to-yellow-600 text-amber-950';
+    case 1: return 'bg-gradient-to-b from-slate-300 to-slate-500 text-slate-950';
+    case 2: return 'bg-gradient-to-b from-amber-700 to-orange-800 text-white';
+    default: return 'bg-[#0D0F15] text-zinc-500';
   }
 };
 
 export const RankingRow = ({ anime, index }: { anime: Anime; index: number }) => (
   <Link
     to={`/anime/${anime.mal_id}`}
-    className="group flex bg-[#11131A] rounded-xl border border-[#FF3B3B]/10 hover:border-[#FF3B3B]/40 transition-all duration-300 overflow-hidden hover:shadow-[0_0_24px_rgba(255,59,59,0.08)]"
+    className="ranking-row group flex bg-[#0D0F15] rounded-xl border border-[#FF3B3B]/[0.07] hover:border-[#FF3B3B]/30 hover:bg-[#11131A] transition-all duration-300 overflow-hidden"
   >
-    <div className={`w-14 md:w-16 flex items-center justify-center text-lg md:text-xl shrink-0 rounded-l-xl ${getRankStyle(index)}`}>
+    <div className={`w-14 flex items-center justify-center text-base font-black shrink-0 ${getRankStyle(index)}`}>
       {index + 1}
     </div>
-    <div className="w-20 md:w-28 h-28 md:h-40 overflow-hidden shrink-0 relative">
+
+    <div className="w-24 md:w-28 h-32 md:h-36 overflow-hidden shrink-0 relative">
       <img
         src={getHighResImageUrl(anime.images.jpg.large_image_url || anime.images.jpg.image_url)}
-        onError={(e) => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = anime.images.jpg.image_url;
-        }}
+        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = anime.images.jpg.image_url; }}
         alt={anime.title}
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
       />
     </div>
+
     <div className="p-4 md:p-5 flex flex-col justify-center flex-1 min-w-0">
       <h3 className="text-white text-sm md:text-base font-bold truncate mb-2 group-hover:text-[#FF3B3B] transition-colors">
         {anime.title}
@@ -38,7 +37,7 @@ export const RankingRow = ({ anime, index }: { anime: Anime; index: number }) =>
         {anime.genres?.slice(0, 2).map(genre => (
           <span
             key={genre.mal_id}
-            className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-[#0D0F15] text-zinc-500 border border-zinc-800"
+            className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-[#11131A] text-zinc-600 border border-[#FF3B3B]/[0.07]"
           >
             {genre.name}
           </span>
@@ -48,9 +47,9 @@ export const RankingRow = ({ anime, index }: { anime: Anime; index: number }) =>
         <span className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest">
           {anime.episodes ? `${anime.episodes} Eps.` : 'En Emisión'}
         </span>
-        <div className="flex items-center gap-1 bg-[#0D0F15] px-2.5 py-1 rounded-lg border border-zinc-800 group-hover:border-[#FF3B3B]/30 transition-colors">
-          <span className="text-[#FF3B3B] text-[10px]">★</span>
-          <span className="text-white font-black text-[11px]">{anime.score || 'N/A'}</span>
+        <div className="flex items-center gap-1.5 bg-[#11131A] px-2.5 py-1 rounded-lg border border-[#FF3B3B]/10 group-hover:border-[#FF3B3B]/30 transition-colors">
+          <span className="text-[#FF3B3B] text-xs">★</span>
+          <span className="text-white font-black text-xs">{anime.score || 'N/A'}</span>
         </div>
       </div>
     </div>

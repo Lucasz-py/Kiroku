@@ -39,7 +39,10 @@ const RankingCard = ({ title, data }: { title: string; data: { label: string; co
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold text-zinc-300 truncate mr-2">{item.label}</span>
+                  <span
+                    className="font-bold text-zinc-300 truncate mr-2"
+                    style={{ fontSize: i === 0 ? '1rem' : i === 1 ? '0.875rem' : '0.78rem' }}
+                  >{item.label}</span>
                   <span className="text-xs font-black text-zinc-500 shrink-0 tabular-nums">{item.count}</span>
                 </div>
                 <div className="h-[3px] bg-[#0D0F15] rounded-full overflow-hidden">
@@ -228,9 +231,8 @@ export const Profile = () => {
 
   // ── LOADING ────────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex flex-col justify-center items-center h-screen bg-[#080A0F] gap-4">
-      <Loader2 className="animate-spin text-[#FF3B3B]" size={30} />
-      <span className="text-[9px] text-zinc-700 uppercase tracking-widest font-bold">Cargando perfil</span>
+    <div className="flex justify-center items-center h-screen bg-[#080A0F]">
+      <Loader2 className="animate-spin text-[#FF3B3B]" size={28} />
     </div>
   );
   if (!profile) return null;
