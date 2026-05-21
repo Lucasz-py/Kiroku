@@ -78,6 +78,12 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
     <section className="estrenos-section reveal-section relative z-20 bg-[#11131A] -mt-[120px] pt-[160px] pb-40">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/15 to-transparent" />
 
+      {/* Glow ambiente — conecta visualmente con el hero */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 z-0"
+        style={{ background: 'radial-gradient(ellipse 70% 100% at 50% 0%, rgba(255,59,59,0.055) 0%, transparent 70%)' }}
+      />
+
       <div className="section-content">
         <div className="container mx-auto px-4 md:px-8 max-w-[1400px] mb-8">
           <p className="seasonal-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">

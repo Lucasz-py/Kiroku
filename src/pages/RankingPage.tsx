@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getTopAnimes } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import { Flame, Star, Plus, Loader2 } from 'lucide-react';

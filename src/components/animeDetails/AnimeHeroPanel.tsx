@@ -56,6 +56,19 @@ export const AnimeHeroPanel = ({
   onRemove, onPendingStatus, onProgressChange, onProgressDecrement, onProgressIncrement,
 }: AnimeHeroPanelProps) => (
   <div className="bg-[#11131A]/90 backdrop-blur-xl mb-12 relative flex flex-col md:flex-row border border-[#FF3B3B]/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden">
+
+    {/* Poster borroneado como fondo — sutil y cinematográfico */}
+    <div className="absolute inset-0 z-0 pointer-events-none">
+      <img
+        src={getHighResImageUrl(anime.images.webp?.large_image_url || anime.images.jpg.large_image_url || anime.images.jpg.image_url)}
+        alt=""
+        aria-hidden="true"
+        className="w-full h-full object-cover scale-110"
+        style={{ filter: 'blur(48px)', opacity: 0.13 }}
+      />
+      <div className="absolute inset-0 bg-[#11131A]/70" />
+    </div>
+
     <div className="w-full md:w-[360px] bg-[#0D0F15] p-5 flex justify-center items-center shrink-0 z-10">
       <div className="w-full aspect-[2/3] rounded-xl overflow-hidden border border-[#FF3B3B]/15 shadow-[0_0_30px_rgba(0,0,0,0.6)]">
         <img
