@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.agents
+.claude
 .opencode/
 !.opencode/skills/
 *.local

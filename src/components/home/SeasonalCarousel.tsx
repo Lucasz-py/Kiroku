@@ -86,14 +86,14 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
 
       <div className="section-content">
         <div className="container mx-auto px-4 md:px-8 max-w-[1400px] mb-8">
-          <p className="seasonal-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
-            <Tv size={15} className="text-[#FF3B3B]/50" /> Esta temporada
+          <p className="seasonal-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2 leading-none">
+            <Tv size={15} className="text-[#FF3B3B]/50 shrink-0" /> Esta temporada
           </p>
-          <div className="seasonal-title flex items-center gap-4">
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+          <div className="seasonal-title flex items-end gap-4">
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
               Estrenos
             </h2>
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 border border-[#FF3B3B]/20 bg-[#11131A] px-3 py-1.5 rounded-lg">
+            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 border border-[#FF3B3B]/20 bg-[#11131A] px-3 py-1.5 rounded-lg mb-0.5">
               {label} {year}
             </span>
           </div>

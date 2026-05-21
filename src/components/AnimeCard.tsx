@@ -7,11 +7,6 @@ interface AnimeCardProps {
   anime: Anime;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  TV: 'TV', Movie: 'Film', OVA: 'OVA', ONA: 'ONA',
-  Special: 'SP', Music: 'Music',
-};
-
 export const AnimeCard = ({ anime }: AnimeCardProps) => {
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -21,7 +16,6 @@ export const AnimeCard = ({ anime }: AnimeCardProps) => {
   };
 
   const releaseDate = formatDate(anime.aired?.from);
-  const typeLabel = anime.type ? (TYPE_LABELS[anime.type] ?? anime.type) : null;
 
   return (
     <Link
@@ -39,16 +33,9 @@ export const AnimeCard = ({ anime }: AnimeCardProps) => {
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
 
-        {/* Tipo de anime — esquina superior izquierda */}
-        {typeLabel && (
-          <div className="absolute top-2 left-2 z-10 bg-[#0D0F15]/80 backdrop-blur-sm px-2 py-0.5 rounded-md border border-white/10">
-            <span className="text-[9px] font-black text-zinc-300 uppercase tracking-wider">{typeLabel}</span>
-          </div>
-        )}
-
-        {/* Score — esquina inferior derecha */}
+        {/* Score — esquina superior izquierda */}
         {anime.score && (
-          <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1 bg-[#0D0F15]/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-[#FF3B3B]/25">
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-[#0D0F15]/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-[#FF3B3B]/25">
             <span className="text-[#FF3B3B] text-[10px] leading-none">★</span>
             <span className="text-white font-black text-[11px] tabular-nums leading-none">{anime.score}</span>
           </div>
