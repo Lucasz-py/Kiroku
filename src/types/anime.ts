@@ -35,6 +35,11 @@ export interface Anime {
 // 2. Respuesta de búsqueda general
 export interface JikanResponse {
   data: Anime[];
+  pagination?: {
+    last_visible_page: number;
+    has_next_page: boolean;
+    current_page: number;
+  };
 }
 
 // 3. Estructura de un Personaje

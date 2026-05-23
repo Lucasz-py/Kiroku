@@ -1,0 +1,194 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ChevronLeft, ChevronRight, CalendarDays, Tv, Loader2, Plus } from 'lucide-react';
+import { getCurrentSeason, getSeasonAnimes, getSeasonLabel } from '../services/jikanApi';
+import type { Anime } from '../types/anime';
+import { AnimeCard } from '../components/AnimeCard';
+
+const SEASONS = ['winter', 'spring', 'summer', 'fall'] as const;
+type Season = typeof SEASONS[number];
+
+const getPrevSeason = (year: number, season: Season): { year: number; season: Season } => {
+  const idx = SEASONS.indexOf(season);
+  if (idx === 0) return { year: year - 1, season: 'fall' };
+  return { year, season: SEASONS[idx - 1] };
+};
+
+const getNextSeason = (year: number, season: Season): { year: number; season: Season } => {
+  const idx = SEASONS.indexOf(season);
+  if (idx === 3) return { year: year + 1, season: 'winter' };
+  return { year, season: SEASONS[idx + 1] };
+};
+
+const isSeasonBeyondCurrent = (year: number, season: Season): boolean => {
+  const { year: curYear, season: curSeason } = getCurrentSeason();
+  if (year > curYear) return true;
+  if (year === curYear) return SEASONS.indexOf(season) > SEASONS.indexOf(curSeason as Season);
+  return false;
+};
+
+const TYPE_FILTERS = [
+  { label: 'Todos', value: '' },
+  { label: 'TV', value: 'tv' },
+  { label: 'Película', value: 'movie' },
+  { label: 'OVA', value: 'ova' },
+  { label: 'Especial', value: 'special' },
+];
+
+const SkeletonCard = () => (
+  <div className="flex flex-col gap-2 animate-pulse">
+    <div className="aspect-[3/4] bg-[#1A1C24] rounded-xl border border-[#FF3B3B]/[0.05]" />
+    <div className="h-3.5 bg-[#1A1C24] rounded-lg w-4/5" />
+    <div className="h-2.5 bg-[#1A1C24] rounded-lg w-2/5" />
+  </div>
+);
+
+export const SeasonalPage = () => {
+  const current = getCurrentSeason();
+  const [year, setYear] = useState(current.year);
+  const [season, setSeason] = useState<Season>(current.season as Season);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [animes, setAnimes] = useState<Anime[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const fetchIdRef = useRef(0);
+
+  const fetchAnimes = useCallback(async (
+    y: number, s: Season, t: string, p: number, append = false
+  ) => {
+    const id = ++fetchIdRef.current;
+    if (p === 1) setLoading(true); else setLoadingMore(true);
+    try {
+      const res = await getSeasonAnimes(y, s, p, t || undefined);
+      if (id !== fetchIdRef.current) return;
+      const items = res?.data ?? [];
+      setAnimes(prev => {
+        const combined = append ? [...prev, ...items] : items;
+        const seen = new Set<number>();
+        return combined.filter(a => seen.has(a.mal_id) ? false : (seen.add(a.mal_id), true));
+      });
+      setHasMore(res?.pagination?.has_next_page ?? false);
+    } catch {
+      if (id !== fetchIdRef.current) return;
+      if (!append) setAnimes([]);
+      setHasMore(false);
+    } finally {
+      if (id === fetchIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+    setAnimes([]);
+    fetchAnimes(year, season, typeFilter, 1, false);
+  }, [year, season, typeFilter, fetchAnimes]);
+
+  const navigateSeason = (dir: 'prev' | 'next') => {
+    const nav = dir === 'prev' ? getPrevSeason(year, season) : getNextSeason(year, season);
+    setYear(nav.year);
+    setSeason(nav.season);
+  };
+
+  const handleLoadMore = () => {
+    const next = page + 1;
+    setPage(next);
+    fetchAnimes(year, season, typeFilter, next, true);
+  };
+
+  const next = getNextSeason(year, season);
+  const canGoNext = !isSeasonBeyondCurrent(next.year, next.season);
+
+  return (
+    <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
+      <div className="container mx-auto max-w-[1400px]">
+
+        {/* ── Header ── */}
+        <div className="mb-10">
+          <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+            <CalendarDays size={15} className="text-[#FF3B3B]/50" />
+            Temporada
+          </p>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-none">
+              {getSeasonLabel(season)}{' '}
+              <span className="text-zinc-600">{year}</span>
+            </h1>
+
+            {/* Navegación de temporada */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigateSeason('prev')}
+                className="flex items-center gap-1.5 px-4 py-2 border border-[#FF3B3B]/20 bg-[#11131A] text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl"
+              >
+                <ChevronLeft size={14} /> Anterior
+              </button>
+              <button
+                onClick={() => navigateSeason('next')}
+                disabled={!canGoNext}
+                className="flex items-center gap-1.5 px-4 py-2 border border-[#FF3B3B]/20 bg-[#11131A] text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                Siguiente <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Filtros de tipo ── */}
+        <div className="flex items-center gap-2 mb-8 flex-wrap">
+          {TYPE_FILTERS.map(f => (
+            <button
+              key={f.value}
+              onClick={() => setTypeFilter(f.value)}
+              className={`px-4 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${
+                typeFilter === f.value
+                  ? 'bg-[#FF3B3B] text-white border-[#FF3B3B]'
+                  : 'bg-[#11131A] text-zinc-500 border-[#FF3B3B]/15 hover:border-[#FF3B3B]/40 hover:text-zinc-300'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Grid ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+          {loading
+            ? [...Array(18)].map((_, i) => <SkeletonCard key={i} />)
+            : animes.map(anime => <AnimeCard key={anime.mal_id} anime={anime} />)
+          }
+        </div>
+
+        {/* ── Empty state ── */}
+        {!loading && animes.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <Tv size={40} className="text-[#FF3B3B]/20" />
+            <p className="text-zinc-600 font-bold text-base uppercase tracking-widest">
+              Sin resultados para esta temporada
+            </p>
+          </div>
+        )}
+
+        {/* ── Load more ── */}
+        {!loading && hasMore && (
+          <div className="mt-10 flex justify-center">
+            <button
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="flex items-center gap-2 px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#11131A] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all disabled:opacity-40 rounded-xl"
+            >
+              {loadingMore
+                ? <><Loader2 size={14} className="animate-spin" /> Cargando...</>
+                : <><Plus size={14} /> Cargar más</>
+              }
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};

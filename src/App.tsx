@@ -7,6 +7,7 @@ import { Search } from './pages/Search';
 import { AnimeDetails } from './pages/AnimeDetails';
 import { Profile } from './pages/Profile';
 import { RankingPage } from './pages/RankingPage';
+import { SeasonalPage } from './pages/SeasonalPage';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -32,6 +33,7 @@ const AppContent = () => {
             <Route path="/anime/:id"  element={<AnimeDetails />} />
             <Route path="/profile"    element={<Profile />} />
             <Route path="/top/:filter" element={<RankingPage />} />
+            <Route path="/seasonal"    element={<SeasonalPage />} />
           </Routes>
         </div>
       </main>

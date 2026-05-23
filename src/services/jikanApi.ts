@@ -138,3 +138,16 @@ export const advancedSearchAnime = async (filters: AdvancedSearchFilters) => {
 
 export const getAnimeStreaming = (id: string) =>
   fetch(`${BASE_URL}/anime/${id}/streaming`).then(res => res.json());
+
+export const getSeasonAnimes = async (year: number, season: string, page: number = 1, filter?: string): Promise<JikanResponse> => {
+  let url = `${BASE_URL}/seasons/${year}/${season}?page=${page}&sfw=true`;
+  if (filter) url += `&filter=${filter}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Error al obtener la temporada');
+  return response.json();
+};
+
+export const getSeasonLabel = (season: string): string => {
+  const labels: Record<string, string> = { winter: 'Invierno', spring: 'Primavera', summer: 'Verano', fall: 'Otoño' };
+  return labels[season] || season;
+};

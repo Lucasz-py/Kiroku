@@ -22,7 +22,7 @@ interface HomeData {
   savedAt:    number;
 }
 
-const CACHE_KEY = 'kiroku_home_v1';
+const CACHE_KEY = 'kiroku_home_v2';
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
 const readStorage = (): HomeData | null => {
@@ -73,12 +73,15 @@ export const Home = () => {
     };
 
     const fetchHomeData = async () => {
-      const [upcomingData, topRatedData, topPopularData] = await Promise.all([
+      const [upcomingRaw, topRatedData, topPopularData] = await Promise.all([
         fetchWithRetry(getUpcomingAnimes),
         fetchWithRetry(() => getTopAnimes(10)),
         fetchWithRetry(() => getTopAnimes(10, 'bypopularity')),
       ]);
       if (cancelled) return;
+
+      const seen = new Set<number>();
+      const upcomingData = upcomingRaw.filter(a => seen.has(a.mal_id) ? false : (seen.add(a.mal_id), true));
 
       setUpcoming(upcomingData);
       setTopRated(topRatedData);

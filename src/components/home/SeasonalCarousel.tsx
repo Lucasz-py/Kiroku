@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Tv } from 'lucide-react';
+import { Tv, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { Anime } from '../../types/anime';
 import { AnimeCard } from '../AnimeCard';
 import { getCurrentSeason } from '../../services/jikanApi';
@@ -89,13 +90,21 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
           <p className="seasonal-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2 leading-none">
             <Tv size={15} className="text-[#FF3B3B]/50 shrink-0" /> Esta temporada
           </p>
-          <div className="seasonal-title flex items-end gap-4">
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
-              Estrenos
-            </h2>
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 border border-[#FF3B3B]/20 bg-[#11131A] px-3 py-1.5 rounded-lg mb-0.5">
-              {label} {year}
-            </span>
+          <div className="seasonal-title flex items-end justify-between gap-4">
+            <div className="flex items-end gap-4">
+              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
+                Estrenos
+              </h2>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 border border-[#FF3B3B]/20 bg-[#11131A] px-3 py-1.5 rounded-lg mb-0.5">
+                {label} {year}
+              </span>
+            </div>
+            <Link
+              to="/seasonal"
+              className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-[#FF3B3B] transition-colors duration-200 mb-0.5 shrink-0"
+            >
+              Ver todo <ChevronRight size={13} />
+            </Link>
           </div>
         </div>
 

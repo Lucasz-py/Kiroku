@@ -354,46 +354,40 @@ export const Search = () => {
             {/* Random anime */}
             <div className="bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6 md:p-8 relative overflow-hidden">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
-              <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-[#FF3B3B]/10">
-
-                {/* Mitad izquierda — texto centrado */}
-                <div className="flex items-center justify-center py-4 md:py-6 md:pr-10">
-                  <div className="max-w-xs text-center md:text-left">
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center justify-center md:justify-start gap-2">
-                      <Dices size={13} className="text-[#FF3B3B]/50" /> Descubrimiento
-                    </p>
-                    <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">¿No sabes qué ver?</h2>
-                    <p className="text-zinc-400 text-sm leading-relaxed mb-8">
-                      Deja que el destino elija tu próxima aventura. Nuestra base de datos elegirá una serie o película al azar para ti.
-                    </p>
-                    <button onClick={handlePickRandomAnime} disabled={loadingRandom}
-                      className="inline-flex items-center gap-3 px-6 py-3 bg-[#FF3B3B] text-white font-black tracking-widest text-xs uppercase hover:bg-[#FF5555] transition-colors disabled:opacity-60 rounded-xl">
-                      {loadingRandom ? <Loader2 size={16} className="animate-spin" /> : <Dices size={16} />}
-                      {loadingRandom ? 'Calculando...' : 'Generar al Azar'}
-                    </button>
-                  </div>
+              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="max-w-xs text-center md:text-left">
+                  <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center justify-center md:justify-start gap-2">
+                    <Dices size={13} className="text-[#FF3B3B]/50" /> Descubrimiento
+                  </p>
+                  <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">¿No sabes qué ver?</h2>
+                  <p className="text-zinc-400 text-sm leading-relaxed mb-8">
+                    Deja que el destino elija tu próxima aventura. Nuestra base de datos elegirá una serie o película al azar para ti.
+                  </p>
+                  <button onClick={handlePickRandomAnime} disabled={loadingRandom}
+                    className="inline-flex items-center gap-3 px-6 py-3 bg-[#FF3B3B] text-white font-black tracking-widest text-xs uppercase hover:bg-[#FF5555] transition-colors disabled:opacity-60 rounded-xl">
+                    {loadingRandom ? <Loader2 size={16} className="animate-spin" /> : <Dices size={16} />}
+                    {loadingRandom ? 'Calculando...' : 'Generar al Azar'}
+                  </button>
                 </div>
-
-                {/* Mitad derecha — tarjeta centrada, tamaño fijo */}
-                <div className="flex items-center justify-center py-4 md:py-6 md:pl-10">
-                  <div className="w-52">
-                    {randomAnime ? (
-                      <AnimeCard anime={randomAnime} />
-                    ) : (
-                      <div>
-                        <div className="aspect-[3/4] bg-[#0D0F15] border border-[#FF3B3B]/10 rounded-xl flex flex-col items-center justify-center gap-3 text-zinc-700">
-                          <Dices size={36} className="opacity-40" />
-                          <span className="text-xs font-bold uppercase tracking-widest">Esperando</span>
-                        </div>
-                        <div className="pt-3 flex flex-col gap-2">
-                          <div className="h-3.5 bg-[#0D0F15] rounded w-4/5" />
-                          <div className="h-2.5 bg-[#0D0F15] rounded w-2/5" />
-                        </div>
+                                      
+                {/* Contenedor fijo — mismo tamaño con o sin tarjeta */}
+                <div className="w-52 md:w-60 shrink-0">
+                  {randomAnime ? (
+                    <AnimeCard anime={randomAnime} />
+                  ) : (
+                    <div>
+                      <div className="aspect-[3/4] bg-[#0D0F15] border border-[#FF3B3B]/10 rounded-xl flex flex-col items-center justify-center gap-3 text-zinc-700">
+                        <Dices size={36} className="opacity-40" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Esperando</span>
                       </div>
-                    )}
-                  </div>
+                      {/* Reserva el espacio del texto de AnimeCard */}
+                      <div className="pt-3 flex flex-col gap-2">
+                        <div className="h-3.5 bg-[#0D0F15] rounded w-4/5" />
+                        <div className="h-2.5 bg-[#0D0F15] rounded w-2/5" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-
               </div>
             </div>
 
