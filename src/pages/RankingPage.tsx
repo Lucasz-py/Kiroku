@@ -1,14 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getTopAnimes } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
-import { Flame, Star, Plus, Loader2 } from 'lucide-react';
+import { Flame, Star, Loader2 } from 'lucide-react';
 import { RankingRow } from '../components/home/RankingRow';
 
 const SkeletonRow = () => (
   <div className="flex bg-[#0D0F15] rounded-xl border border-[#FF3B3B]/[0.07] overflow-hidden animate-pulse">
     <div className="w-14 bg-[#1A1C24] shrink-0" />
-    <div className="w-24 md:w-28 h-32 md:h-36 bg-[#1A1C24] shrink-0" />
+    <div className="w-28 md:w-40 h-40 md:h-52 bg-[#1A1C24] shrink-0" />
     <div className="p-4 md:p-5 flex flex-col justify-center flex-1 gap-3">
       <div className="h-4 bg-[#1A1C24] rounded-lg w-3/4" />
       <div className="flex gap-2">
@@ -26,23 +26,57 @@ export const RankingPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const isPopular = filter === 'popular';
   const jikanFilter = isPopular ? 'bypopularity' : '';
   const title = isPopular ? 'Más Populares' : 'Mejor Valoradas';
 
-  const fetchRankings = useCallback(async (page: number, append: boolean = false) => {
+  const fetchRankings = useCallback(async (page: number, append = false) => {
     if (page === 1) setLoading(true); else setLoadingMore(true);
     try {
       const res = await getTopAnimes(25, jikanFilter, page);
       const newAnimes = res?.data || [];
       setAnimes(prev => append ? [...prev, ...newAnimes] : newAnimes);
-    } catch (error) { console.error(error); setAnimes([]); } finally { setLoading(false); setLoadingMore(false); }
-  }, [jikanFilter]);
+      setHasMore(newAnimes.length === 25 && (append ? (animes.length + newAnimes.length) < 100 : newAnimes.length < 100));
+    } catch (error) {
+      console.error(error);
+      setAnimes([]);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [jikanFilter, animes.length]);
 
-  useEffect(() => { setCurrentPage(1); fetchRankings(1, false); window.scrollTo(0, 0); }, [filter, jikanFilter, fetchRankings]);
+  useEffect(() => {
+    setCurrentPage(1);
+    setAnimes([]);
+    setHasMore(true);
+    fetchRankings(1, false);
+    window.scrollTo(0, 0);
+  }, [filter, jikanFilter]);
 
-  const handleLoadMore = () => { const nextPage = currentPage + 1; setCurrentPage(nextPage); fetchRankings(nextPage, true); };
+  // Infinite scroll con IntersectionObserver (#9)
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && !loading && hasMore && animes.length < 100) {
+          const nextPage = currentPage + 1;
+          setCurrentPage(nextPage);
+          fetchRankings(nextPage, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [currentPage, loadingMore, loading, hasMore, animes.length, fetchRankings]);
 
   return (
     <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
@@ -73,18 +107,18 @@ export const RankingPage = () => {
             }
           </div>
 
-          {!loading && animes.length < 100 && animes.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-[#FF3B3B]/10 flex justify-center">
-              <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="flex items-center gap-2 px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all disabled:opacity-40 rounded-xl"
-              >
-                {loadingMore
-                  ? <><Loader2 size={14} className="animate-spin" /> Cargando...</>
-                  : <><Plus size={14} /> Cargar más</>
-                }
-              </button>
+          {/* Sentinel para infinite scroll */}
+          <div ref={sentinelRef} className="h-1" />
+
+          {loadingMore && (
+            <div className="flex justify-center py-6">
+              <Loader2 size={20} className="animate-spin text-[#FF3B3B]" />
+            </div>
+          )}
+
+          {!loading && !hasMore && animes.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-[#FF3B3B]/10 text-center">
+              <p className="text-zinc-600 text-[11px] font-bold uppercase tracking-widest">Top {animes.length} cargados</p>
             </div>
           )}
         </div>

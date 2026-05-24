@@ -4,13 +4,14 @@ import { getAnimeById, getAnimeCharacters, getAnimeStreaming } from '../services
 import { getHighResImageUrl } from '../utils/animeUtils';
 import type { AnimeFull, Character } from '../types/anime';
 import { supabase } from '../lib/supabase';
-import { Loader2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 import { AnimeHeroPanel } from '../components/animeDetails/AnimeHeroPanel';
 import { RelatedContentSection } from '../components/animeDetails/RelatedContentSection';
 import { StreamingSection } from '../components/animeDetails/StreamingSection';
 import { TrailerSection } from '../components/animeDetails/TrailerSection';
 import { CharactersGrid } from '../components/animeDetails/CharactersGrid';
+import { AnimeDetailsSkeleton } from '../components/animeDetails/AnimeDetailsSkeleton';
+import { useUserData } from '../contexts/UserDataContext';
 
 export const AnimeDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,7 @@ export const AnimeDetails = () => {
   const [relatedImages, setRelatedImages] = useState<Record<number, string | null>>({});
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { refreshSavedAnimes } = useUserData();
 
   const getAvailableStatuses = () => {
     if (!anime) return [];
@@ -81,7 +83,6 @@ export const AnimeDetails = () => {
     fetchData();
   }, [id]);
 
-  // Queue related-entry image fetches one at a time to respect Jikan's rate limit
   useEffect(() => {
     if (!anime?.relations) return;
     const entries = anime.relations
@@ -164,6 +165,7 @@ export const AnimeDetails = () => {
       setProgress(episodesWatched);
       setPendingStatus(null);
       setIsDropdownOpen(false);
+      await refreshSavedAnimes();
     } catch (error) {
       console.error(error);
     } finally {
@@ -176,6 +178,7 @@ export const AnimeDetails = () => {
     const newFavoriteState = !isFavorite;
     setIsFavorite(newFavoriteState);
     await supabase.from('saved_animes').update({ is_favorite: newFavoriteState }).eq('user_id', session.user.id).eq('anime_id', anime.mal_id);
+    await refreshSavedAnimes();
   };
 
   const handleRemoveAnime = async () => {
@@ -186,6 +189,7 @@ export const AnimeDetails = () => {
     setIsFavorite(false);
     setIsSaving(false);
     setIsDropdownOpen(false);
+    await refreshSavedAnimes();
   };
 
   const handleStatusSelect = (status: string) => {
@@ -194,11 +198,7 @@ export const AnimeDetails = () => {
     else handleSaveAnime(status, 0);
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-screen bg-[#0D0F15]">
-      <Loader2 size={28} className="animate-spin text-[#FF3B3B]" />
-    </div>
-  );
+  if (loading) return <AnimeDetailsSkeleton />;
 
   if (!anime) return (
     <div className="flex justify-center items-center h-screen bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest">
@@ -215,6 +215,7 @@ export const AnimeDetails = () => {
   return (
     <div className="relative min-h-screen bg-[#0D0F15] font-sans overflow-hidden">
       <div className="relative z-10 container mx-auto p-4 md:p-8 pt-32 md:pt-36 max-w-[1350px]">
+
         <AnimeHeroPanel
           anime={anime}
           displayYear={displayYear}

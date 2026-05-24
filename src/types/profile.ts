@@ -5,6 +5,7 @@ export interface UserProfile {
   username: string;
   email: string;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
 }
 
@@ -16,12 +17,23 @@ export interface SavedAnime {
   status: string;
   episodes_total: number | null;
   score: number | null;
+  user_score?: number | null;
   is_favorite: boolean;
   year: number | null;
   genres: string[];
   studios?: string[];
   duration: string | null;
   progress?: number | null;
+  created_at?: string;
+}
+
+export interface ActivityEntry {
+  type: 'added' | 'completed' | 'watching' | 'favorite';
+  anime_id: number;
+  title: string;
+  image_url: string;
+  status: string;
+  created_at: string;
 }
 
 export interface UserStats {

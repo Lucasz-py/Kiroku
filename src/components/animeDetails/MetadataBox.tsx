@@ -9,7 +9,7 @@ interface MetadataBoxProps {
 
 export const MetadataBox = ({ label, value, isLink, link }: MetadataBoxProps) => (
   <div className="bg-[#1A1C24] p-4 rounded-xl border border-[#FF3B3B]/15 flex flex-col items-center justify-center text-center transition-all hover:bg-[#1A1C24]/80 hover:border-[#FF3B3B]/40 group">
-    <span className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest mb-1.5 group-hover:text-[#FF3B3B]/70 transition-colors">
+    <span className="text-zinc-500 text-[11px] font-bold uppercase tracking-widest mb-1.5 group-hover:text-[#FF3B3B]/70 transition-colors">
       {label}
     </span>
     {isLink && link

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -8,6 +8,9 @@ import { AnimeDetails } from './pages/AnimeDetails';
 import { Profile } from './pages/Profile';
 import { RankingPage } from './pages/RankingPage';
 import { SeasonalPage } from './pages/SeasonalPage';
+import { WatchlistPage } from './pages/WatchlistPage';
+import { PublicProfilePage } from './pages/PublicProfilePage';
+import { UserDataProvider } from './contexts/UserDataContext';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -17,36 +20,62 @@ const ScrollToTop = () => {
   return null;
 };
 
-// Envuelve las rutas y aplica un fade-in al montar cada página.
-// key={pathname} hace que el div se remonte en cada cambio de ruta,
-// disparando la animación CSS de entrada.
-const AppContent = () => {
-  const { pathname } = useLocation();
+// Animación de entrada/salida por ruta (#16)
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  const [displayLocation, setDisplayLocation] = useState(location);
+  const [transitionStage, setTransitionStage] = useState<'enter' | 'exit'>('enter');
+  const prevKey = useRef(location.key);
+
+  useEffect(() => {
+    if (location.key !== prevKey.current) {
+      setTransitionStage('exit');
+      const timer = setTimeout(() => {
+        setDisplayLocation(location);
+        setTransitionStage('enter');
+        prevKey.current = location.key;
+      }, 160);
+      return () => clearTimeout(timer);
+    }
+  }, [location]);
+
   return (
-    <div className="min-h-screen bg-[#080A0F] text-zinc-100 flex flex-col font-sans relative">
-      <Header />
-      <main className="flex-1 w-full relative">
-        <div key={pathname} className="animate-in fade-in duration-200 h-full">
-          <Routes>
-            <Route path="/"           element={<Home />} />
-            <Route path="/search"     element={<Search />} />
-            <Route path="/anime/:id"  element={<AnimeDetails />} />
-            <Route path="/profile"    element={<Profile />} />
-            <Route path="/top/:filter" element={<RankingPage />} />
-            <Route path="/seasonal"    element={<SeasonalPage />} />
-          </Routes>
-        </div>
-      </main>
-      <Footer />
+    <div
+      key={displayLocation.key}
+      className={transitionStage === 'enter' ? 'page-enter' : 'page-exit'}
+      style={{ minHeight: '100%' }}
+    >
+      <Routes location={displayLocation}>
+        <Route path="/"             element={<Home />} />
+        <Route path="/search"       element={<Search />} />
+        <Route path="/anime/:id"    element={<AnimeDetails />} />
+        <Route path="/profile"      element={<Profile />} />
+        <Route path="/top/:filter"  element={<RankingPage />} />
+        <Route path="/seasonal"     element={<SeasonalPage />} />
+        <Route path="/watchlist"    element={<WatchlistPage />} />
+        <Route path="/u/:username"  element={<PublicProfilePage />} />
+      </Routes>
     </div>
   );
 };
 
+const AppContent = () => (
+  <div className="min-h-screen bg-[#080A0F] text-zinc-100 flex flex-col font-sans relative">
+    <Header />
+    <main className="flex-1 w-full relative">
+      <AnimatedRoutes />
+    </main>
+    <Footer />
+  </div>
+);
+
 function App() {
   return (
     <Router>
-      <ScrollToTop />
-      <AppContent />
+      <UserDataProvider>
+        <ScrollToTop />
+        <AppContent />
+      </UserDataProvider>
     </Router>
   );
 }

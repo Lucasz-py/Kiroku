@@ -1,14 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Rajdhani:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-space-mono: "Space Mono", monospace;
+  --font-display: "Rajdhani", sans-serif;
 }
 
-/* Forzamos el fondo oscuro en toda la aplicación */
 :root {
-  background-color: #030712; /* slate-950 */
-  color: #ecfeff; /* cyan-50 */
+  background-color: #030712;
+  color: #ecfeff;
   font-family: var(--font-space-mono);
 }
 
@@ -19,16 +19,36 @@ html, body, #root {
   min-height: 100%;
 }
 
-::-webkit-scrollbar {
-  width: 4px;
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #FF3B3B; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #FF6B6B; }
+
+/* ── Page transitions ── */
+@keyframes page-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-::-webkit-scrollbar-track {
-  background: #080A0F;
+
+@keyframes page-exit {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
-::-webkit-scrollbar-thumb {
-  background: #FF3B3B;
-  border-radius: 10px;
+
+.page-enter { animation: page-enter 220ms ease-out forwards; }
+.page-exit  { animation: page-exit  160ms ease-in forwards; }
+
+/* ── Image progressive load ── */
+.img-blur-load {
+  filter: blur(8px);
+  transition: filter 400ms ease;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #FF6B6B;
+.img-blur-load.loaded {
+  filter: blur(0);
+}
+
+/* ── Virtual list helper ── */
+.virtual-list-item {
+  contain: layout style paint;
 }

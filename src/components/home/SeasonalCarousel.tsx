@@ -69,7 +69,6 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
     isDragging.current = true;
     startX.current = e.clientX;
     scrollLeftPos.current = carouselRef.current.scrollLeft;
-    e.preventDefault();
   };
 
   const handleMouseEnter = () => { isHovered.current = true; };
@@ -129,8 +128,8 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
             }
           </div>
 
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-[#11131A] to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#11131A] to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-24 md:w-40 bg-gradient-to-r from-[#11131A] via-[#11131A]/60 to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-24 md:w-40 bg-gradient-to-l from-[#11131A] via-[#11131A]/60 to-transparent z-10" />
         </div>
       </div>
     </section>

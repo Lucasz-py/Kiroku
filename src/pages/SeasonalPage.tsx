@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Tv, Loader2, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus } from 'lucide-react';
 import { getCurrentSeason, getSeasonAnimes, getSeasonLabel } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import { AnimeCard } from '../components/AnimeCard';
@@ -164,11 +164,15 @@ export const SeasonalPage = () => {
 
         {/* ── Empty state ── */}
         {!loading && animes.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <Tv size={40} className="text-[#FF3B3B]/20" />
-            <p className="text-zinc-600 font-bold text-base uppercase tracking-widest">
-              Sin resultados para esta temporada
-            </p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
+            <svg width="72" height="72" viewBox="0 0 72 72" fill="none" className="opacity-20">
+              <rect x="8" y="10" width="56" height="52" rx="6" stroke="#FF3B3B" strokeWidth="2.5" />
+              <path d="M8 22h56" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" />
+              <path d="M22 10v12M50 10v12" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" />
+              <path d="M24 40h24M24 50h16" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <p className="text-zinc-400 text-base font-black">Sin resultados</p>
+            <p className="text-zinc-600 text-sm">No hay animes para esta temporada con los filtros seleccionados.</p>
           </div>
         )}
 

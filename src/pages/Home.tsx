@@ -147,7 +147,6 @@ export const Home = () => {
       { y: 0, opacity: 1, stagger: 0.15, ease: 'power2.out', scrollTrigger: { trigger: '.rankings-section', start: 'top 82%', end: 'top 55%', scrub: 0.8 } }
     );
 
-    // Re-calcular posiciones si el layout cambia (skeletons → tarjetas reales)
     ScrollTrigger.refresh();
 
   }, { scope: mainRef, dependencies: [upcoming, topRated, topPopular] });

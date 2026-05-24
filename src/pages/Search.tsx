@@ -4,7 +4,7 @@ import { advancedSearchAnime, getRandomAnime, getRecommendedAnimes, type Advance
 import type { Anime } from '../types/anime';
 import { AnimeCard } from '../components/AnimeCard';
 import debounce from 'lodash.debounce';
-import { Dices, RefreshCw, Loader2, FilterX, Filter, X, Plus, Search as SearchIcon, Star } from 'lucide-react';
+import { Dices, RefreshCw, Loader2, FilterX, Filter, X, Plus, Search as SearchIcon, Star, ArrowUpDown, Tv } from 'lucide-react';
 
 const ANIME_TYPES = [ { value: 'tv', label: 'TV (Serie)' }, { value: 'movie', label: 'Película (Cine)' }, { value: 'ova', label: 'OVA (Físico)' }, { value: 'special', label: 'Especial' }, { value: 'ona', label: 'ONA (Web / Netflix)' } ];
 const ANIME_STATUS = [ { value: 'airing', label: 'En Emisión' }, { value: 'complete', label: 'Finalizado' }, { value: 'upcoming', label: 'Por Estrenar' } ];
@@ -13,6 +13,31 @@ const TOP_STUDIOS = [ { value: '2', label: 'Kyoto Animation' }, { value: '4', la
 const GENRES = [ { id: 1, name: 'Acción' }, { id: 2, name: 'Aventura' }, { id: 4, name: 'Comedia' }, { id: 8, name: 'Drama' }, { id: 10, name: 'Fantasía' }, { id: 14, name: 'Terror' }, { id: 7, name: 'Misterio' }, { id: 22, name: 'Romance' }, { id: 24, name: 'Sci-Fi' }, { id: 36, name: 'Slice of Life' }, { id: 30, name: 'Deportes' }, { id: 37, name: 'Sobrenatural' }, { id: 41, name: 'Suspenso' }, { id: 62, name: 'Isekai' }, { id: 9, name: 'Ecchi' } ];
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({length: currentYear - 1970 + 2}, (_, i) => currentYear + 1 - i);
+
+// Opciones de ordenamiento (#8)
+const SORT_OPTIONS = [
+  { value: 'score_desc',  label: 'Mayor puntuación' },
+  { value: 'score_asc',   label: 'Menor puntuación' },
+  { value: 'popularity',  label: 'Más popular' },
+  { value: 'episodes_desc', label: 'Más episodios' },
+  { value: 'year_desc',   label: 'Más recientes' },
+  { value: 'year_asc',    label: 'Más antiguos' },
+];
+
+type SortKey = typeof SORT_OPTIONS[number]['value'];
+
+const sortResults = (animes: Anime[], sort: SortKey): Anime[] => {
+  const copy = [...animes];
+  switch (sort) {
+    case 'score_desc':    return copy.sort((a,b) => (b.score||0) - (a.score||0));
+    case 'score_asc':     return copy.sort((a,b) => (a.score||0) - (b.score||0));
+    case 'popularity':    return copy.sort((a,b) => (a.popularity||9999) - (b.popularity||9999));
+    case 'episodes_desc': return copy.sort((a,b) => (b.episodes||0) - (a.episodes||0));
+    case 'year_desc':     return copy.sort((a,b) => new Date(b.aired?.from||0).getTime() - new Date(a.aired?.from||0).getTime());
+    case 'year_asc':      return copy.sort((a,b) => new Date(a.aired?.from||0).getTime() - new Date(b.aired?.from||0).getTime());
+    default: return copy;
+  }
+};
 
 interface Option { value: string; label: string }
 interface CustomDropdownProps { label: string; value: string; options: Option[]; onChange: (val: string) => void; disabled?: boolean; placeholder?: string; }
@@ -45,6 +70,23 @@ const CustomDropdown = ({ label, value, options, onChange, disabled = false, pla
   );
 };
 
+// Empty state ilustrado (#15)
+const EmptySearchState = ({ onClear }: { onClear: () => void }) => (
+  <div className="text-center py-20 bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl flex flex-col items-center gap-4">
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="opacity-30">
+      <circle cx="34" cy="34" r="20" stroke="#FF3B3B" strokeWidth="3" />
+      <line x1="48" y1="48" x2="68" y2="68" stroke="#FF3B3B" strokeWidth="3" strokeLinecap="round" />
+      <line x1="28" y1="34" x2="40" y2="34" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" />
+      <line x1="34" y1="28" x2="34" y2="40" stroke="#FF3B3B" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+    <p className="text-zinc-300 text-lg font-black">Sin resultados</p>
+    <p className="text-zinc-600 text-sm">Intenta con otros filtros o términos de búsqueda.</p>
+    <button onClick={onClear} className="px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl">
+      Reiniciar Filtros
+    </button>
+  </div>
+);
+
 export const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [results, setResults] = useState<Anime[]>([]);
@@ -59,12 +101,23 @@ export const Search = () => {
   const [randomAnime, setRandomAnime] = useState<Anime | null>(null);
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('score_desc');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
 
   const [localFilters, setLocalFilters] = useState({
     type: '', status: '', year: '', season: '', studioId: '', studioName: '', genres: [] as string[]
   });
 
   useEffect(() => { handleLoadRecommendations(); }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setShowSortDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLoadRecommendations = async () => {
     setLoadingRecs(true);
@@ -178,11 +231,14 @@ export const Search = () => {
   };
   const activeTags = getActiveFilterTags();
 
+  const sortedResults = useMemo(() => sortResults(results, sortKey), [results, sortKey]);
+  const currentSortLabel = SORT_OPTIONS.find(s => s.value === sortKey)?.label || 'Ordenar';
+
   return (
     <div className="min-h-screen bg-[#080A0F] font-sans pt-28 md:pt-32 pb-24">
       <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
 
-        {/* ── Search bar + filters ── */}
+        {/* Search bar + filters */}
         <div className={`max-w-4xl mx-auto transition-all duration-500 ${isDiscoverMode ? 'mt-4 mb-16' : 'mb-8'}`}>
           {isDiscoverMode && (
             <div className="text-center mb-10">
@@ -219,7 +275,7 @@ export const Search = () => {
                 {instantResults.map((anime) => (
                   <Link key={anime.mal_id} to={`/anime/${anime.mal_id}`} className="flex items-center gap-4 p-3 border-b border-[#FF3B3B]/[0.07] hover:bg-[#1A1C24] transition-colors last:border-0">
                     <div className="w-10 h-14 bg-[#0D0F15] shrink-0 overflow-hidden rounded-lg">
-                      <img src={anime.images.jpg.image_url} alt={anime.title} className="w-full h-full object-cover opacity-80" />
+                      <img src={anime.images.jpg.image_url} alt={anime.title} className="w-full h-full object-cover opacity-80" loading="lazy" />
                     </div>
                     <div>
                       <p className="text-white text-sm font-bold">{anime.title}</p>
@@ -281,7 +337,7 @@ export const Search = () => {
             )}
           </form>
 
-          {/* Active filter tags */}
+          {/* Filter tags */}
           {!isDiscoverMode && activeTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mt-4">
               <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Filtros:</span>
@@ -297,31 +353,55 @@ export const Search = () => {
           )}
         </div>
 
-        {/* ── Loading ── */}
         {loading && (
           <div className="flex justify-center items-center py-32">
             <Loader2 className="animate-spin text-[#FF3B3B]" size={28} />
           </div>
         )}
 
-        {/* ── Results ── */}
-        {!loading && results.length > 0 && (
+        {/* Results con ordenamiento (#8) */}
+        {!loading && sortedResults.length > 0 && (
           <div className="animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-4 border-b border-[#FF3B3B]/10 gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1">Búsqueda</p>
                 <h2 className="text-2xl font-black text-white flex items-center gap-3">
                   Resultados
-                  <span className="text-sm font-bold text-zinc-500 border border-[#FF3B3B]/10 bg-[#11131A] px-3 py-1 rounded-lg">{results.length}</span>
+                  <span className="text-sm font-bold text-zinc-500 border border-[#FF3B3B]/10 bg-[#11131A] px-3 py-1 rounded-lg">{sortedResults.length}</span>
                 </h2>
               </div>
-              <button onClick={clearFilters} className="flex items-center gap-2 px-4 py-2.5 bg-[#11131A] border border-[#FF3B3B]/10 text-zinc-500 hover:text-[#FF3B3B] hover:border-[#FF3B3B]/30 transition-all text-xs font-bold uppercase tracking-widest rounded-xl">
-                <FilterX size={13} /> Limpiar
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Sort dropdown (#8) */}
+                <div className="relative" ref={sortRef}>
+                  <button
+                    onClick={() => setShowSortDropdown(v => !v)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#11131A] border border-[#FF3B3B]/15 text-zinc-400 hover:text-zinc-200 hover:border-[#FF3B3B]/30 transition-all text-xs font-bold uppercase tracking-widest rounded-xl"
+                  >
+                    <ArrowUpDown size={13} />
+                    {currentSortLabel}
+                  </button>
+                  {showSortDropdown && (
+                    <div className="absolute right-0 top-full mt-2 bg-[#0D0F15] border border-[#FF3B3B]/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] z-50 min-w-44 rounded-xl overflow-hidden">
+                      {SORT_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setSortKey(opt.value as SortKey); setShowSortDropdown(false); }}
+                          className={`w-full text-left px-4 py-3 text-xs font-bold transition-colors hover:bg-[#11131A] border-b border-[#FF3B3B]/[0.07] last:border-0 ${sortKey === opt.value ? 'text-[#FF3B3B] bg-[#11131A]/80' : 'text-zinc-400'}`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={clearFilters} className="flex items-center gap-2 px-4 py-2.5 bg-[#11131A] border border-[#FF3B3B]/10 text-zinc-500 hover:text-[#FF3B3B] hover:border-[#FF3B3B]/30 transition-all text-xs font-bold uppercase tracking-widest rounded-xl">
+                  <FilterX size={13} /> Limpiar
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-              {results.map((anime) => <AnimeCard key={anime.mal_id} anime={anime} />)}
+              {sortedResults.map((anime) => <AnimeCard key={anime.mal_id} anime={anime} />)}
             </div>
 
             {hasNextPage && (
@@ -335,32 +415,25 @@ export const Search = () => {
           </div>
         )}
 
-        {/* ── Sin resultados ── */}
+        {/* Sin resultados con empty state (#15) */}
         {!loading && results.length === 0 && hasActiveFilters && (
-          <div className="text-center py-20 bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl">
-            <FilterX size={40} className="mx-auto text-zinc-700 mb-4" />
-            <p className="text-zinc-300 text-lg font-black mb-2">Sin resultados</p>
-            <p className="text-zinc-600 text-sm mb-6">Ajusta los filtros para ampliar la búsqueda.</p>
-            <button onClick={clearFilters} className="px-6 py-2.5 border border-[#FF3B3B]/20 bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-[11px] hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl">
-              Reiniciar Filtros
-            </button>
-          </div>
+          <EmptySearchState onClear={clearFilters} />
         )}
 
-        {/* ── Discover mode ── */}
+        {/* Discover mode */}
         {isDiscoverMode && (
           <div className="flex flex-col gap-8 animate-in fade-in duration-700">
-
             {/* Random anime */}
             <div className="bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6 md:p-8 relative overflow-hidden">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
-              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="max-w-xs text-center md:text-left">
-                  <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center justify-center md:justify-start gap-2">
+              <div className="flex flex-col md:flex-row items-stretch">
+                {/* Bloque de texto — mitad izquierda */}
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-4 md:py-8">
+                  <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center justify-center gap-2">
                     <Dices size={13} className="text-[#FF3B3B]/50" /> Descubrimiento
                   </p>
                   <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">¿No sabes qué ver?</h2>
-                  <p className="text-zinc-400 text-sm leading-relaxed mb-8">
+                  <p className="text-zinc-400 text-sm leading-relaxed mb-8 max-w-xs">
                     Deja que el destino elija tu próxima aventura. Nuestra base de datos elegirá una serie o película al azar para ti.
                   </p>
                   <button onClick={handlePickRandomAnime} disabled={loadingRandom}
@@ -369,24 +442,29 @@ export const Search = () => {
                     {loadingRandom ? 'Calculando...' : 'Generar al Azar'}
                   </button>
                 </div>
-                                      
-                {/* Contenedor fijo — mismo tamaño con o sin tarjeta */}
-                <div className="w-52 md:w-60 shrink-0">
-                  {randomAnime ? (
-                    <AnimeCard anime={randomAnime} />
-                  ) : (
-                    <div>
-                      <div className="aspect-[3/4] bg-[#0D0F15] border border-[#FF3B3B]/10 rounded-xl flex flex-col items-center justify-center gap-3 text-zinc-700">
-                        <Dices size={36} className="opacity-40" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Esperando</span>
+
+                {/* Divisor central */}
+                <div className="hidden md:block w-px my-6 bg-gradient-to-b from-transparent via-[#FF3B3B]/20 to-transparent" />
+                <div className="block md:hidden h-px mx-6 bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
+
+                {/* Tarjeta aleatoria — mitad derecha */}
+                <div className="flex-1 flex items-center justify-center px-6 py-4 md:py-8">
+                  <div className="w-52 md:w-60 shrink-0">
+                    {randomAnime ? (
+                      <AnimeCard anime={randomAnime} />
+                    ) : (
+                      <div>
+                        <div className="aspect-[3/4] bg-[#0D0F15] border border-[#FF3B3B]/10 rounded-xl flex flex-col items-center justify-center gap-3 text-zinc-700">
+                          <Dices size={36} className="opacity-40" />
+                          <span className="text-xs font-bold uppercase tracking-widest">Esperando</span>
+                        </div>
+                        <div className="pt-3 flex flex-col gap-2">
+                          <div className="h-3.5 bg-[#0D0F15] rounded w-4/5" />
+                          <div className="h-2.5 bg-[#0D0F15] rounded w-2/5" />
+                        </div>
                       </div>
-                      {/* Reserva el espacio del texto de AnimeCard */}
-                      <div className="pt-3 flex flex-col gap-2">
-                        <div className="h-3.5 bg-[#0D0F15] rounded w-4/5" />
-                        <div className="h-2.5 bg-[#0D0F15] rounded w-2/5" />
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -423,8 +501,16 @@ export const Search = () => {
                   {recommendations.map((anime) => <AnimeCard key={anime.mal_id} anime={anime} />)}
                 </div>
               )}
-            </div>
 
+              {/* Empty state (#15) — si no cargaron recomendaciones */}
+              {!loadingRecs && recommendations.length === 0 && (
+                <div className="flex flex-col items-center py-10 gap-3 text-center">
+                  <Tv size={32} className="text-zinc-700" />
+                  <p className="text-zinc-600 text-sm font-bold uppercase tracking-widest">No se pudieron cargar recomendaciones.</p>
+                  <button onClick={handleLoadRecommendations} className="text-[#FF3B3B] text-xs font-bold uppercase tracking-widest hover:underline">Reintentar</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

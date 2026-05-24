@@ -20,7 +20,7 @@ export const RankingRow = ({ anime, index }: { anime: Anime; index: number }) =>
       {index + 1}
     </div>
 
-    <div className="w-24 md:w-28 h-32 md:h-36 overflow-hidden shrink-0 relative">
+    <div className="w-28 md:w-40 h-40 md:h-52 overflow-hidden shrink-0 relative">
       <img
         src={getHighResImageUrl(anime.images.jpg.large_image_url || anime.images.jpg.image_url)}
         onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = anime.images.jpg.image_url; }}
@@ -37,14 +37,14 @@ export const RankingRow = ({ anime, index }: { anime: Anime; index: number }) =>
         {anime.genres?.slice(0, 2).map(genre => (
           <span
             key={genre.mal_id}
-            className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-[#11131A] text-zinc-600 border border-[#FF3B3B]/[0.07]"
+            className="text-[11px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-[#11131A] text-zinc-600 border border-[#FF3B3B]/[0.07]"
           >
             {genre.name}
           </span>
         ))}
       </div>
       <div className="flex items-center gap-3 mt-auto">
-        <span className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest">
+        <span className="text-zinc-600 text-xs font-bold uppercase tracking-widest">
           {anime.episodes ? `${anime.episodes} Eps.` : 'En Emisión'}
         </span>
         <div className="flex items-center gap-1.5 bg-[#11131A] px-2.5 py-1 rounded-lg border border-[#FF3B3B]/10 group-hover:border-[#FF3B3B]/30 transition-colors">

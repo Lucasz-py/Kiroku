@@ -83,9 +83,8 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
         trigger: containerRef.current,
         start: 'top top',
         end: `+=${scrollDistance}`,
-        scrub: 1, 
+        scrub: 0.5,
         pin: true,
-        anticipatePin: 1, 
       }
     });
 
@@ -114,11 +113,7 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
 
       imagesRef.current = await Promise.all(loadPromises);
       setIsLoaded(true);
-      handleResize(); 
-
-      requestAnimationFrame(() => {
-        ScrollTrigger.refresh();
-      });
+      handleResize();
     };
 
     preloadImages();

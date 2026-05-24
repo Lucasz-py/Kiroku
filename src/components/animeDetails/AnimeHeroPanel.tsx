@@ -1,9 +1,11 @@
-import { type RefObject } from 'react';
-import { Trophy, Flame } from 'lucide-react';
+import { type RefObject, useState } from 'react';
+import { Trophy, Flame, Star } from 'lucide-react';
 import type { AnimeFull } from '../../types/anime';
 import { getHighResImageUrl } from '../../utils/animeUtils';
 import { MetadataBox } from './MetadataBox';
 import { AnimeSaveControls } from './AnimeSaveControls';
+import { supabase } from '../../lib/supabase';
+import { useUserData } from '../../contexts/UserDataContext';
 
 const getRankingBadgeStyle = (rank: number) => {
   switch (rank) {
@@ -25,6 +27,105 @@ const getPopularityBadgeStyle = (popularity: number) => {
     case 5: return 'bg-purple-500/10 text-purple-300 border border-purple-500/20 font-bold';
     default: return 'bg-[#1A1C24] border border-zinc-700/50 text-zinc-300';
   }
+};
+
+const SYNOPSIS_LIMIT = 280;
+
+const Synopsis = ({ text }: { text: string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > SYNOPSIS_LIMIT;
+  const displayed = isLong && !expanded ? text.slice(0, SYNOPSIS_LIMIT).trimEnd() + '…' : text;
+
+  return (
+    <div>
+      <p className="text-zinc-400 text-base leading-relaxed">{displayed}</p>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="mt-2 text-[#FF3B3B] text-sm font-bold hover:text-[#FF7777] transition-colors"
+        >
+          {expanded ? 'Ver menos' : 'Ver más'}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// Widget de puntuación de usuario (#2)
+const UserScoreWidget = ({ animeId, savedStatus }: { animeId: number; savedStatus: string | null }) => {
+  const { getUserScore, session, refreshSavedAnimes } = useUserData();
+  const currentScore = getUserScore(animeId);
+  const [hover, setHover] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+
+  if (!savedStatus || !session) return null;
+
+  const handleRate = async (score: number) => {
+    setSaving(true);
+    try {
+      await supabase
+        .from('saved_animes')
+        .update({ user_score: score })
+        .eq('user_id', session.user.id)
+        .eq('anime_id', animeId);
+      await refreshSavedAnimes();
+    } catch (e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  const resolveScore = (e: React.MouseEvent<HTMLButtonElement>, val: number) => {
+    const { left, width } = e.currentTarget.getBoundingClientRect();
+    return e.clientX - left < width / 2 ? val - 0.5 : val;
+  };
+
+  const display = hover || currentScore || 0;
+
+  const getStarFill = (val: number) => {
+    if (display >= val) return 'full';
+    if (display >= val - 0.5) return 'half';
+    return 'empty';
+  };
+
+  return (
+    <div className="flex flex-col gap-2 bg-[#1A1C24] p-4 rounded-xl border border-[#FF3B3B]/15">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Tu Puntuación</span>
+      <div
+        className="flex items-center gap-1"
+        onMouseLeave={() => setHover(0)}
+      >
+        {Array.from({ length: 10 }).map((_, i) => {
+          const val = i + 1;
+          const fill = getStarFill(val);
+          return (
+            <button
+              key={val}
+              disabled={saving}
+              onClick={(e) => handleRate(resolveScore(e, val))}
+              onMouseMove={(e) => setHover(resolveScore(e, val))}
+              className="relative w-4 h-4 shrink-0 flex items-center justify-center"
+            >
+              {fill === 'half' ? (
+                <>
+                  <Star size={14} className="text-zinc-700 absolute" />
+                  <span className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+                    <Star size={14} className="text-[#FF3B3B] fill-[#FF3B3B]" />
+                  </span>
+                </>
+              ) : (
+                <Star
+                  size={14}
+                  className={fill === 'full' ? 'text-[#FF3B3B] fill-[#FF3B3B]' : 'text-zinc-700'}
+                />
+              )}
+            </button>
+          );
+        })}
+        <span className="text-[#FF3B3B] font-black text-sm ml-2 tabular-nums w-7 text-left">
+          {display > 0 ? display : ''}
+        </span>
+      </div>
+    </div>
+  );
 };
 
 interface AnimeHeroPanelProps {
@@ -57,7 +158,7 @@ export const AnimeHeroPanel = ({
 }: AnimeHeroPanelProps) => (
   <div className="bg-[#11131A]/90 backdrop-blur-xl mb-12 relative flex flex-col md:flex-row border border-[#FF3B3B]/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl overflow-hidden">
 
-    {/* Poster borroneado como fondo — sutil y cinematográfico */}
+    {/* Fondo borroneado */}
     <div className="absolute inset-0 z-0 pointer-events-none">
       <img
         src={getHighResImageUrl(anime.images.webp?.large_image_url || anime.images.jpg.large_image_url || anime.images.jpg.image_url)}
@@ -69,6 +170,7 @@ export const AnimeHeroPanel = ({
       <div className="absolute inset-0 bg-[#11131A]/70" />
     </div>
 
+    {/* Poster */}
     <div className="w-full md:w-[360px] bg-[#0D0F15] p-5 flex justify-center items-center shrink-0 z-10">
       <div className="w-full aspect-[2/3] rounded-xl overflow-hidden border border-[#FF3B3B]/15 shadow-[0_0_30px_rgba(0,0,0,0.6)]">
         <img
@@ -84,6 +186,7 @@ export const AnimeHeroPanel = ({
       </div>
     </div>
 
+    {/* Info */}
     <div className="p-8 md:p-10 flex-1 flex flex-col relative z-10">
       <div className="flex flex-col xl:flex-row justify-between items-start mb-8 gap-8">
         <div className="flex-1">
@@ -114,13 +217,17 @@ export const AnimeHeroPanel = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-start xl:items-end gap-5 min-w-max">
+        <div className="flex flex-col items-start xl:items-end gap-4 min-w-max">
+          {/* Score global */}
           <div className="bg-[#1A1C24] p-4 rounded-xl border border-[#FF3B3B]/20 w-full xl:w-auto">
             <div className="text-5xl font-black text-[#FF3B3B] drop-shadow-[0_0_10px_rgba(255,59,59,0.3)]">
               {anime.score || 'N/A'}
             </div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-widest mt-1 font-bold">Puntuación Global</div>
+            <div className="text-[11px] text-zinc-500 uppercase tracking-widest mt-1 font-bold">Puntuación Global</div>
           </div>
+
+          {/* Rating del usuario (#2) */}
+          <UserScoreWidget animeId={anime.mal_id} savedStatus={savedStatus} />
 
           <AnimeSaveControls
             anime={anime}
@@ -142,6 +249,7 @@ export const AnimeHeroPanel = ({
             onProgressDecrement={onProgressDecrement}
             onProgressIncrement={onProgressIncrement}
           />
+
         </div>
       </div>
 
@@ -160,9 +268,7 @@ export const AnimeHeroPanel = ({
 
       <div className="mt-auto">
         <h3 className="text-xl font-black text-white mb-4">Sinopsis</h3>
-        <p className="text-zinc-400 text-base leading-relaxed">
-          {anime.synopsis || 'Sinopsis no disponible en la base de datos.'}
-        </p>
+        <Synopsis text={anime.synopsis || 'Sinopsis no disponible en la base de datos.'} />
       </div>
     </div>
   </div>

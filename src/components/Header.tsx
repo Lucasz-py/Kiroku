@@ -16,9 +16,10 @@ interface UserProfile {
 }
 
 const NAV_LINKS = [
-  { to: '/',            label: 'Inicio',  isActive: (p: string) => p === '/' },
-  { to: '/search',      label: 'Buscar',  isActive: (p: string) => p.startsWith('/search') },
-  { to: '/top/rated',   label: 'Ranking', isActive: (p: string) => p.startsWith('/top') },
+  { to: '/',            label: 'Inicio',   isActive: (p: string) => p === '/' },
+  { to: '/search',      label: 'Buscar',   isActive: (p: string) => p.startsWith('/search') },
+  { to: '/top/rated',   label: 'Ranking',  isActive: (p: string) => p.startsWith('/top') },
+  { to: '/watchlist',   label: 'Mi Lista', isActive: (p: string) => p.startsWith('/watchlist'), authRequired: true },
 ] as const;
 
 export const Header = () => {
@@ -106,7 +107,9 @@ export const Header = () => {
           <div className="h-4 w-px bg-[#FF3B3B]/20 hidden md:block" />
 
           <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(({ to, label, isActive }) => {
+            {NAV_LINKS.map(({ to, label, isActive, ...rest }) => {
+              const authRequired = 'authRequired' in rest ? rest.authRequired : false;
+              if (authRequired && !session) return null;
               const active = isActive(pathname);
               return (
                 <Link
@@ -227,7 +230,9 @@ export const Header = () => {
 
           {/* Nav links mobile */}
           <nav className="p-3 flex flex-col gap-1">
-            {NAV_LINKS.map(({ to, label, isActive }) => {
+            {NAV_LINKS.map(({ to, label, isActive, ...rest }) => {
+              const authRequired = 'authRequired' in rest ? rest.authRequired : false;
+              if (authRequired && !session) return null;
               const active = isActive(pathname);
               return (
                 <Link

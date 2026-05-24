@@ -8,11 +8,14 @@ import {
   CalendarDays, Timer, Star, Play, Clock, Activity,
 } from 'lucide-react';
 import type { UserProfile, SavedAnime, UserStats } from '../types/profile';
+import { toWebP } from '../utils/imageUtils';
 import { ACHIEVEMENTS } from '../constants/profile';
 import { parseDurationToMinutes } from '../utils/animeUtils';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { AchievementGallery } from '../components/profile/AchievementGallery';
 import { AnimeGrid } from '../components/profile/AnimeGrid';
+import { ActivityFeed } from '../components/profile/ActivityFeed';
+import { ProfileOnboarding } from '../components/profile/ProfileOnboarding';
 
 // ─── LOCAL COMPONENT: horizontal ranking bars ────────────────────────────────
 const RankingCard = ({ title, data }: { title: string; data: { label: string; count: number }[] }) => {
@@ -32,7 +35,7 @@ const RankingCard = ({ title, data }: { title: string; data: { label: string; co
           {data.map((item, i) => (
             <div key={item.label} className="flex items-center gap-3">
               <span
-                className="text-xs font-black w-5 shrink-0 tabular-nums"
+                className="text-sm font-black w-5 shrink-0 tabular-nums"
                 style={{ color: i === 0 ? '#FF3B3B' : i === 1 ? '#FF7777' : '#FF9B9B' }}
               >
                 #{i + 1}
@@ -41,7 +44,7 @@ const RankingCard = ({ title, data }: { title: string; data: { label: string; co
                 <div className="flex justify-between items-center mb-2">
                   <span
                     className="font-bold text-zinc-300 truncate mr-2"
-                    style={{ fontSize: i === 0 ? '1rem' : i === 1 ? '0.875rem' : '0.78rem' }}
+                    style={{ fontSize: i === 0 ? '1rem' : i === 1 ? '0.9rem' : '0.82rem' }}
                   >{item.label}</span>
                   <span className="text-xs font-black text-zinc-500 shrink-0 tabular-nums">{item.count}</span>
                 </div>
@@ -72,6 +75,7 @@ export const Profile = () => {
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [newBio, setNewBio] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const navigate = useNavigate();
 
   const pageRef = useRef<HTMLDivElement>(null);
@@ -96,6 +100,7 @@ export const Profile = () => {
             email: currentSession.user.email || '',
             username: currentSession.user.email?.split('@')[0] || 'usuario',
             avatar_url: null,
+            banner_url: null,
             bio: null,
           });
         }
@@ -133,14 +138,31 @@ export const Profile = () => {
     } catch (error) { console.error(error); }
   };
 
+  const handleBannerUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploadingBanner(true);
+      if (!event.target.files || event.target.files.length === 0 || !profile) return;
+      const webp = await toWebP(event.target.files[0], 0.85, 1920);
+      const filePath = `${profile.id}-${Date.now()}.webp`;
+      const { error: uploadError } = await supabase.storage.from('banners').upload(filePath, webp, { contentType: 'image/webp', upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(filePath);
+      const { error: updateError } = await supabase.from('profiles').update({ banner_url: publicUrl }).eq('id', profile.id);
+      if (updateError) throw updateError;
+      setProfile({ ...profile, banner_url: publicUrl });
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al subir el banner.');
+    } finally { setUploadingBanner(false); }
+  };
+
   const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     try {
       setUploadingAvatar(true);
       if (!event.target.files || event.target.files.length === 0 || !profile) return;
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${profile.id}-${Math.random()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+      const webp = await toWebP(event.target.files[0], 0.88, 800);
+      const filePath = `${profile.id}-${Date.now()}.webp`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, webp, { contentType: 'image/webp', upsert: true });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
@@ -252,11 +274,13 @@ export const Profile = () => {
             isEditingBio={isEditingBio}
             newBio={newBio}
             uploadingAvatar={uploadingAvatar}
+            uploadingBanner={uploadingBanner}
             onBioChange={setNewBio}
             onEditBio={() => setIsEditingBio(true)}
             onBioSave={handleUpdateBio}
             onBioCancel={() => { setIsEditingBio(false); setNewBio(profile.bio || ''); }}
             onAvatarUpload={handleAvatarUpload}
+            onBannerUpload={handleBannerUpload}
             onSignOut={handleSignOut}
           />
         </div>
@@ -301,8 +325,15 @@ export const Profile = () => {
           ))}
         </div>
 
+        {/* ── ONBOARDING (usuario nuevo sin animes) ──────────────────────── */}
+        {animes.length === 0 && (
+          <div className="profile-section mb-6">
+            <ProfileOnboarding username={profile.username} />
+          </div>
+        )}
+
         {/* ── MAIN GRID ──────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${animes.length === 0 ? 'hidden' : ''}`}>
 
           {/* LEFT SIDEBAR ── */}
           <div className="lg:col-span-4 flex flex-col gap-5">
@@ -349,6 +380,9 @@ export const Profile = () => {
 
             {/* Top estudios */}
             <RankingCard title="Estudios Favoritos" data={stats.topStudios} />
+
+            {/* Actividad reciente (#7) */}
+            <ActivityFeed animes={animes} />
 
             {/* Logros */}
             <div className="profile-section">

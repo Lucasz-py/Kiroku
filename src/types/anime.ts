@@ -10,11 +10,13 @@ export interface Genre {
 export interface Anime {
   mal_id: number;
   title: string;
+  title_english?: string | null;
   type?: string;
   episodes: number | null;
   score?: number | null;
-  duration?: string; // <--- AGREGADO PARA CÁLCULO DE TIEMPO
-  rank?: number | null;       // <--- NUEVO: Ranking Global
+  synopsis?: string | null;
+  duration?: string;
+  rank?: number | null;
   popularity?: number | null;
   images: {
     jpg: {

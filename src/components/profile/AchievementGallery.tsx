@@ -108,8 +108,14 @@ const medalGlowStyle = (ach: Achievement): React.CSSProperties => {
   return { filter: glowToFilter(ach.glowClass) };
 };
 
+const GRID_LIMIT = 12; // 4 filas × 3 columnas
+
 export const AchievementGallery = ({ unlockedAchievements }: AchievementGalleryProps) => {
   const [selected, setSelected] = useState<Achievement | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const hasMore = unlockedAchievements.length > GRID_LIMIT;
+  const visible = expanded ? unlockedAchievements : unlockedAchievements.slice(0, GRID_LIMIT);
 
   return (
     <>
@@ -122,8 +128,9 @@ export const AchievementGallery = ({ unlockedAchievements }: AchievementGalleryP
         </p>
 
         {unlockedAchievements.length > 0 ? (
+          <>
           <div className="grid grid-cols-3 gap-3">
-            {unlockedAchievements.map(ach => {
+            {visible.map(ach => {
               const accentColor = extractAccentColor(ach.glowClass);
               return (
                 <div
@@ -155,6 +162,15 @@ export const AchievementGallery = ({ unlockedAchievements }: AchievementGalleryP
               );
             })}
           </div>
+          {hasMore && (
+            <button
+              onClick={() => setExpanded(e => !e)}
+              className="mt-4 w-full py-2 text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-[#FF3B3B] border border-[#FF3B3B]/10 hover:border-[#FF3B3B]/30 bg-[#0D0F15] transition-all rounded-xl"
+            >
+              {expanded ? 'Ver menos' : `Ver más (${unlockedAchievements.length - GRID_LIMIT} más)`}
+            </button>
+          )}
+          </>
         ) : (
           <div className="flex flex-col items-center py-8 gap-3">
             <Trophy size={28} className="text-zinc-800" />
