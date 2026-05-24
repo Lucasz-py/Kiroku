@@ -1,7 +1,0 @@
-node_modules/
-dist/
-build/
-.git/
-*.log
-# Si tenés imágenes pesadas o assets:
-public/assets/
