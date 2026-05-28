@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { useParams } from 'react-router-dom';
 import { getAnimeById, getAnimeCharacters, getAnimeStreaming } from '../services/jikanApi';
 import { getHighResImageUrl } from '../utils/animeUtils';
@@ -166,8 +167,10 @@ export const AnimeDetails = () => {
       setPendingStatus(null);
       setIsDropdownOpen(false);
       await refreshSavedAnimes();
+      toast.success(`Añadido a ${newStatus}`);
     } catch (error) {
       console.error(error);
+      toast.error('Error al guardar');
     } finally {
       setIsSaving(false);
     }
@@ -179,6 +182,7 @@ export const AnimeDetails = () => {
     setIsFavorite(newFavoriteState);
     await supabase.from('saved_animes').update({ is_favorite: newFavoriteState }).eq('user_id', session.user.id).eq('anime_id', anime.mal_id);
     await refreshSavedAnimes();
+    toast.success(newFavoriteState ? 'Añadido a favoritos' : 'Eliminado de favoritos');
   };
 
   const handleRemoveAnime = async () => {
@@ -190,6 +194,7 @@ export const AnimeDetails = () => {
     setIsSaving(false);
     setIsDropdownOpen(false);
     await refreshSavedAnimes();
+    toast.success('Eliminado de tu lista');
   };
 
   const handleStatusSelect = (status: string) => {

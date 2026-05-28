@@ -4,9 +4,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { searchAnime } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import debounce from 'lodash.debounce';
-import { LoginModal } from './LoginModal';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
+
+interface HeaderProps {
+  onOpenLogin: () => void;
+}
 
 interface UserProfile {
   id: string;
@@ -22,10 +25,9 @@ const NAV_LINKS = [
   { to: '/watchlist',   label: 'Mi Lista', isActive: (p: string) => p.startsWith('/watchlist'), authRequired: true },
 ] as const;
 
-export const Header = () => {
+export const Header = ({ onOpenLogin }: HeaderProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [instantResults, setInstantResults] = useState<Anime[]>([]);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -188,7 +190,7 @@ export const Header = () => {
             </Link>
           ) : (
             <button
-              onClick={() => setIsLoginOpen(true)}
+              onClick={onOpenLogin}
               className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#11131A]/80 border border-[#FF3B3B]/20 text-zinc-400 hover:text-[#FF3B3B] hover:border-[#FF3B3B]/50 transition-colors rounded-lg"
             >
               <UserCircle size={18} />
@@ -253,7 +255,6 @@ export const Header = () => {
         </div>
       )}
 
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </>
   );
 };

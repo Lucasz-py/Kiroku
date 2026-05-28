@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
+import { BottomNav } from './components/BottomNav';
+import { LoginModal } from './components/LoginModal';
 import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { AnimeDetails } from './pages/AnimeDetails';
@@ -59,15 +62,33 @@ const AnimatedRoutes = () => {
   );
 };
 
-const AppContent = () => (
-  <div className="min-h-screen bg-[#080A0F] text-zinc-100 flex flex-col font-sans relative">
-    <Header />
-    <main className="flex-1 w-full relative">
-      <AnimatedRoutes />
-    </main>
-    <Footer />
-  </div>
-);
+const AppContent = () => {
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  return (
+    <div className="min-h-screen bg-[#080A0F] text-zinc-100 flex flex-col font-sans relative">
+      <Header onOpenLogin={() => setIsLoginOpen(true)} />
+      <main className="flex-1 w-full relative pb-16 md:pb-0">
+        <AnimatedRoutes />
+      </main>
+      <Footer />
+      <BottomNav onOpenLogin={() => setIsLoginOpen(true)} />
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#11131A',
+            border: '1px solid rgba(255,59,59,0.25)',
+            color: '#fff',
+            fontFamily: 'inherit',
+            fontSize: '13px',
+            fontWeight: '700',
+          },
+        }}
+      />
+    </div>
+  );
+};
 
 function App() {
   return (

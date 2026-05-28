@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { getUpcomingAnimes, getTopAnimes } from '../services/jikanApi';
+import { getUpcomingAnimes, getTopAnimes, getCurrentSeason } from '../services/jikanApi';
+import { getCachedSync } from '../utils/queryCache';
 import type { Anime } from '../types/anime';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -10,102 +11,43 @@ import { RankingsSection } from '../components/home/RankingsSection';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ── Persistencia de datos ─────────────────────────────────────────────────────
-// Dos niveles:
-//   1. memCache   → navegación dentro de la misma sesión (instantáneo)
-//   2. localStorage → persiste entre recargas (F5) con TTL de 10 minutos
-
-interface HomeData {
-  upcoming:   Anime[];
-  topRated:   Anime[];
-  topPopular: Anime[];
-  savedAt:    number;
-}
-
-const CACHE_KEY = 'kiroku_home_v2';
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
-
-const readStorage = (): HomeData | null => {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw) as HomeData;
-    return Date.now() - d.savedAt < CACHE_TTL ? d : null;
-  } catch { return null; }
-};
-
-const writeStorage = (d: HomeData) => {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); } catch { }
-};
-
-// Inicializar memCache desde localStorage al cargar el módulo
-let memCache: HomeData | null = readStorage();
-
-// ── Componente ────────────────────────────────────────────────────────────────
 export const Home = () => {
-  // Estado inicializado desde cache → datos disponibles en el primer render
-  const [upcoming,   setUpcoming]   = useState<Anime[]>(memCache?.upcoming   ?? []);
-  const [topRated,   setTopRated]   = useState<Anime[]>(memCache?.topRated   ?? []);
-  const [topPopular, setTopPopular] = useState<Anime[]>(memCache?.topPopular ?? []);
+  const { year, season } = getCurrentSeason();
+
+  // Initialise from localStorage-backed cache so data shows on first render
+  const [upcoming,   setUpcoming]   = useState<Anime[]>(
+    () => getCachedSync<{ data: Anime[] }>(`season:${year}:${season}`, 10 * 60 * 1000)?.data ?? []
+  );
+  const [topRated,   setTopRated]   = useState<Anime[]>(
+    () => getCachedSync<{ data: Anime[] }>('top:10::1', 15 * 60 * 1000)?.data ?? []
+  );
+  const [topPopular, setTopPopular] = useState<Anime[]>(
+    () => getCachedSync<{ data: Anime[] }>('top:10:bypopularity:1', 15 * 60 * 1000)?.data ?? []
+  );
   const mainRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Cache fresco → no hay nada que hacer
-    if (memCache && Date.now() - memCache.savedAt < CACHE_TTL) return;
-
     let cancelled = false;
-    const wait = (ms: number) => new Promise<void>(res => setTimeout(res, ms));
 
-    const fetchWithRetry = async <T,>(
-      fn: () => Promise<{ data: T[] }>,
-      maxRetries = 4,
-      baseMs = 600,
-    ): Promise<T[]> => {
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        if (cancelled) return [];
-        try {
-          const res = await fn();
-          if (res.data?.length > 0) return res.data;
-        } catch { /* reintentar */ }
-        if (attempt < maxRetries) await wait(baseMs * Math.pow(1.8, attempt));
-      }
-      return [];
-    };
-
-    const fetchHomeData = async () => {
-      const [upcomingRaw, topRatedData, topPopularData] = await Promise.all([
-        fetchWithRetry(getUpcomingAnimes),
-        fetchWithRetry(() => getTopAnimes(10)),
-        fetchWithRetry(() => getTopAnimes(10, 'bypopularity')),
+    (async () => {
+      const [upcomingRes, topRatedRes, topPopularRes] = await Promise.all([
+        getUpcomingAnimes().catch(() => null),
+        getTopAnimes(10).catch(() => null),
+        getTopAnimes(10, 'bypopularity').catch(() => null),
       ]);
       if (cancelled) return;
 
-      const seen = new Set<number>();
-      const upcomingData = upcomingRaw.filter(a => seen.has(a.mal_id) ? false : (seen.add(a.mal_id), true));
-
-      setUpcoming(upcomingData);
-      setTopRated(topRatedData);
-      setTopPopular(topPopularData);
-
-      // Guardar en ambos niveles de cache si todo cargó
-      if (upcomingData.length && topRatedData.length && topPopularData.length) {
-        const entry: HomeData = {
-          upcoming: upcomingData, topRated: topRatedData,
-          topPopular: topPopularData, savedAt: Date.now(),
-        };
-        memCache = entry;
-        writeStorage(entry);
+      if (upcomingRes?.data) {
+        const seen = new Set<number>();
+        setUpcoming(upcomingRes.data.filter(a => seen.has(a.mal_id) ? false : (seen.add(a.mal_id), true)));
       }
-    };
+      if (topRatedRes?.data)   setTopRated(topRatedRes.data);
+      if (topPopularRes?.data) setTopPopular(topPopularRes.data);
+    })();
 
-    fetchHomeData();
     return () => { cancelled = true; };
   }, []);
 
-  // ── Animaciones GSAP ────────────────────────────────────────────────────────
-  // Sin guard de datos: los elementos del DOM siempre están presentes
-  // (con skeletons o con tarjetas reales). Las animaciones funcionan en ambos casos.
-  // ScrollTrigger.refresh() re-calcula posiciones cuando el layout cambia.
   useGSAP(() => {
     ['.estrenos-section', '.rankings-section'].forEach((sel) => {
       gsap.fromTo(sel,
@@ -148,7 +90,6 @@ export const Home = () => {
     );
 
     ScrollTrigger.refresh();
-
   }, { scope: mainRef, dependencies: [upcoming, topRated, topPopular] });
 
   return (

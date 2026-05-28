@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { AnimeScrollCanvas } from '../../ui/AnimeScrollCanvas';
-
-const cyberClipCard = { clipPath: 'polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px))' };
 
 export const HeroSection = () => (
   <AnimeScrollCanvas
@@ -27,25 +26,10 @@ export const HeroSection = () => (
         </h1>
         <Link
           to="/search"
-          className="group relative inline-flex items-center gap-6 px-4 py-3 bg-[#11131A] border border-[#FF3B3B]/40 hover:bg-[#FF3B3B] transition-colors duration-300 shadow-[0_0_15px_rgba(255,59,59,0.15)]"
-          style={cyberClipCard}
+          className="inline-flex items-center gap-3 px-8 py-4 bg-[#FF3B3B] text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:bg-[#FF5555] transition-colors shadow-[0_0_28px_rgba(255,59,59,0.4)] hover:shadow-[0_0_36px_rgba(255,59,59,0.55)]"
         >
-          <div
-            className="flex items-center justify-center w-10 h-10 bg-[#0D0F15] transition-colors duration-500 group-hover:bg-[#11131A] shadow-inner"
-            style={cyberClipCard}
-          >
-            <svg
-              className="w-5 h-5 text-[#FF3B3B] transform transition-transform duration-500 group-hover:translate-x-1 group-hover:text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </div>
-          <span className="text-white font-bold tracking-[0.2em] text-xs md:text-sm uppercase transition-colors duration-300 pr-4">
-            Iniciar Búsqueda
-          </span>
+          <Search size={17} />
+          Iniciar Búsqueda
         </Link>
       </div>
     </div>

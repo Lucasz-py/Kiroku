@@ -253,8 +253,19 @@ export const Profile = () => {
 
   // ── LOADING ────────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="flex justify-center items-center h-screen bg-[#080A0F]">
-      <Loader2 className="animate-spin text-[#FF3B3B]" size={28} />
+    <div className="relative min-h-screen bg-[#080A0F] font-sans">
+      <div className="container mx-auto px-4 md:px-8 pt-32 md:pt-36 pb-24 max-w-[1400px]">
+        <div className="mb-10 h-56 bg-[#11131A] rounded-2xl border border-[#FF3B3B]/10 animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-[#11131A] rounded-xl border border-[#FF3B3B]/10 animate-pulse" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 flex flex-col gap-5">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-44 bg-[#11131A] rounded-2xl border border-[#FF3B3B]/10 animate-pulse" />)}
+          </div>
+          <div className="lg:col-span-8 h-[500px] bg-[#11131A] rounded-2xl border border-[#FF3B3B]/10 animate-pulse" />
+        </div>
+      </div>
     </div>
   );
   if (!profile) return null;
