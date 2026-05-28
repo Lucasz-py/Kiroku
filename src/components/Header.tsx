@@ -173,7 +173,7 @@ export const Header = () => {
         <div className="ml-auto flex items-center gap-2 md:gap-3 shrink-0">
           {session ? (
             <Link
-              to="/profile"
+              to={profile?.username ? `/u/${profile.username}` : '/profile'}
               className="flex items-center gap-2 md:gap-3 bg-[#11131A]/80 px-3 md:px-4 py-2 border border-[#FF3B3B]/20 hover:border-[#FF3B3B]/50 hover:shadow-[0_0_15px_rgba(255,59,59,0.15)] transition-all cursor-pointer group rounded-lg"
             >
               <div className="w-6 h-6 md:w-7 md:h-7 overflow-hidden flex items-center justify-center font-black text-white text-[10px] uppercase bg-[#FF3B3B] rounded-md shrink-0">

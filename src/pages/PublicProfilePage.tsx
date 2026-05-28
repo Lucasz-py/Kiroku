@@ -1,5 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { useParams, Link } from 'react-router-dom';
+import { Profile } from './Profile';
 import { useUserData } from '../contexts/UserDataContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -80,23 +83,30 @@ export const PublicProfilePage = () => {
   const { username } = useParams<{ username: string }>();
   const { session } = useUserData();
   const [ownUsername, setOwnUsername] = useState<string | null>(null);
+  const [ownerChecked, setOwnerChecked] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [animes, setAnimes] = useState<SavedAnime[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // Step 1: check if the viewer is the profile owner
   useEffect(() => {
-    const fetchOwnUsername = async () => {
-      if (!session) return;
+    const checkOwner = async () => {
+      if (!session) { setOwnerChecked(true); return; }
       const { data } = await supabase.from('profiles').select('username').eq('id', session.user.id).single();
-      if (data) setOwnUsername(data.username);
+      setOwnUsername(data?.username ?? null);
+      setOwnerChecked(true);
     };
-    fetchOwnUsername();
+    checkOwner();
   }, [session]);
 
+  // Step 2: fetch public data only when confirmed NOT the owner
   useEffect(() => {
+    if (!ownerChecked) return;
+    if (ownUsername === username) { setLoading(false); return; }
+    if (!username) return;
+
     const fetchProfile = async () => {
-      if (!username) return;
       try {
         const { data: profileData } = await supabase
           .from('profiles').select('*').eq('username', username).single();
@@ -117,7 +127,7 @@ export const PublicProfilePage = () => {
       }
     };
     fetchProfile();
-  }, [username]);
+  }, [ownerChecked, ownUsername, username]);
 
   const stats: UserStats = useMemo(() => {
     let episodes = 0, minutes = 0, completed = 0, favorites = 0, pending = 0, watching = 0;
@@ -166,17 +176,40 @@ export const PublicProfilePage = () => {
     { label: 'Favoritos',     value: stats.favorites, icon: Heart        },
   ];
 
-  if (ownUsername && username && ownUsername === username) return <Navigate to="/profile" replace />;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const counterRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  if (loading) return (
+  useGSAP(() => {
+    if (loading || !pageRef.current) return;
+    gsap.fromTo(
+      '.profile-section',
+      { y: 28, opacity: 0, filter: 'blur(6px)' },
+      { y: 0, opacity: 1, filter: 'blur(0px)', stagger: 0.07, duration: 0.55, ease: 'power2.out', clearProps: 'all' }
+    );
+    counterRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const target = heroStats[i].value;
+      const obj = { val: 0 };
+      gsap.to(obj, {
+        val: target,
+        duration: 1.35,
+        ease: 'power2.out',
+        delay: 0.18 + i * 0.08,
+        onUpdate() { if (el) el.textContent = Math.round(obj.val).toLocaleString(); },
+      });
+    });
+  }, { scope: pageRef, dependencies: [loading] });
+
+  if (!ownerChecked || loading) return (
     <div className="flex justify-center items-center h-screen bg-[#080A0F]">
       <Loader2 className="animate-spin text-[#FF3B3B]" size={28} />
     </div>
   );
+  if (ownUsername === username) return <Profile />;
   if (notFound || !profile) return <NotFound username={username} />;
 
   return (
-    <div className="min-h-screen bg-[#080A0F] font-sans">
+    <div ref={pageRef} className="min-h-screen bg-[#080A0F] font-sans">
       <div className="container mx-auto px-4 md:px-8 pt-32 md:pt-36 pb-24 max-w-[1400px]">
 
         {/* Back link */}
@@ -188,43 +221,50 @@ export const PublicProfilePage = () => {
         </Link>
 
         {/* Profile header (read-only) */}
-        <div className="bg-[#11131A]/90 backdrop-blur-xl p-8 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8 rounded-2xl border border-[#FF3B3B]/20">
-          <div className="shrink-0 w-36 h-36 md:w-48 md:h-48 bg-[#11131A] flex items-center justify-center text-6xl font-black text-white rounded-xl border border-[#FF3B3B]/20 overflow-hidden">
-            {profile.avatar_url
-              ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-              : profile.username?.charAt(0).toUpperCase()}
-          </div>
+        <div className="profile-section relative mb-8 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden">
+          {profile.banner_url && (
+            <img src={profile.banner_url} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <div className={`absolute inset-0 ${profile.banner_url ? 'bg-[#0D0F15]/70 backdrop-blur-[2px]' : 'bg-[#11131A]/90'}`} />
 
-          <div className="flex-1 text-center md:text-left pt-2 md:pt-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#FF3B3B]/60 mb-1 flex items-center justify-center md:justify-start gap-1.5">
-              <Activity size={11} /> Perfil público
-            </p>
-            <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
-              {profile.username}
-            </h1>
-            {profile.bio && (
-              <p className="text-zinc-400 text-sm leading-relaxed max-w-2xl bg-[#11131A]/80 p-4 rounded-lg border-l-2 border-[#FF3B3B]/30">
-                {profile.bio}
-              </p>
-            )}
-          </div>
-
-          {/* Quick totals */}
-          <div className="shrink-0 flex flex-col gap-2 text-right">
-            <div className="bg-[#0D0F15] border border-[#FF3B3B]/10 rounded-xl px-5 py-3 text-center">
-              <span className="block text-2xl font-black text-white tabular-nums">{animes.length}</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">en lista</span>
+          <div className="relative z-10 p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
+            <div className="shrink-0 w-36 h-36 md:w-48 md:h-48 bg-[#11131A] flex items-center justify-center text-6xl font-black text-white rounded-xl border-4 border-[#0D0F15]/60 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.7)]">
+              {profile.avatar_url
+                ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                : profile.username?.charAt(0).toUpperCase()}
             </div>
-            <div className="bg-[#0D0F15] border border-[#FF3B3B]/10 rounded-xl px-5 py-3 text-center">
-              <span className="block text-2xl font-black text-white tabular-nums">{unlockedAchievements.length}</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">logros</span>
+
+            <div className="flex-1 text-center md:text-left pt-2 md:pt-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#FF3B3B]/60 mb-1 flex items-center justify-center md:justify-start gap-1.5">
+                <Activity size={11} /> Perfil público
+              </p>
+              <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
+                {profile.username}
+              </h1>
+              {profile.bio && (
+                <p className="text-zinc-400 text-sm leading-relaxed max-w-2xl bg-[#0D0F15]/60 backdrop-blur-sm p-4 rounded-lg border-l-2 border-[#FF3B3B]/30">
+                  {profile.bio}
+                </p>
+              )}
+            </div>
+
+            {/* Quick totals */}
+            <div className="shrink-0 flex flex-col gap-2 text-right">
+              <div className="bg-[#0D0F15]/80 border border-[#FF3B3B]/10 rounded-xl px-5 py-3 text-center">
+                <span className="block text-2xl font-black text-white tabular-nums">{animes.length}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">en lista</span>
+              </div>
+              <div className="bg-[#0D0F15]/80 border border-[#FF3B3B]/10 rounded-xl px-5 py-3 text-center">
+                <span className="block text-2xl font-black text-white tabular-nums">{unlockedAchievements.length}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">logros</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Hero stat bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          {heroStats.map(stat => (
+        <div className="profile-section grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          {heroStats.map((stat, i) => (
             <div
               key={stat.label}
               className="relative bg-[#11131A] border border-[#FF3B3B]/10 rounded-xl px-5 py-4 overflow-hidden flex items-center gap-4"
@@ -233,8 +273,11 @@ export const PublicProfilePage = () => {
               <stat.icon size={22} className="text-[#FF3B3B]/40 shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-1 truncate">{stat.label}</p>
-                <span className="block text-3xl xl:text-4xl font-black text-white tracking-tight leading-none tabular-nums">
-                  {stat.value.toLocaleString()}
+                <span
+                  ref={el => { counterRefs.current[i] = el; }}
+                  className="block text-3xl xl:text-4xl font-black text-white tracking-tight leading-none tabular-nums"
+                >
+                  0
                 </span>
               </div>
             </div>
@@ -248,7 +291,7 @@ export const PublicProfilePage = () => {
           <div className="lg:col-span-4 flex flex-col gap-5">
 
             {/* Secondary metrics */}
-            <div className="bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
+            <div className="profile-section bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
                 <Activity size={14} className="text-[#FF3B3B]/50" /> Métricas detalladas
               </p>
@@ -268,15 +311,14 @@ export const PublicProfilePage = () => {
               </div>
             </div>
 
-            <RankingBar title="Géneros Favoritos" data={stats.topGenres} />
-            <RankingBar title="Estudios Favoritos" data={stats.topStudios} />
-            <ActivityFeed animes={animes} />
-
-            <AchievementGallery unlockedAchievements={unlockedAchievements} />
+            <div className="profile-section"><RankingBar title="Géneros Favoritos" data={stats.topGenres} /></div>
+            <div className="profile-section"><RankingBar title="Estudios Favoritos" data={stats.topStudios} /></div>
+            <div className="profile-section"><ActivityFeed animes={animes} /></div>
+            <div className="profile-section"><AchievementGallery unlockedAchievements={unlockedAchievements} /></div>
           </div>
 
           {/* Anime grid (read-only) */}
-          <div className="lg:col-span-8">
+          <div className="profile-section lg:col-span-8">
             <AnimeGrid animes={animes} />
           </div>
         </div>

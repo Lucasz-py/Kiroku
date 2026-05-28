@@ -1,6 +1,5 @@
-import type { ChangeEvent } from 'react';
-import { Loader2, Camera, Edit2, X, LogOut, ExternalLink, ImagePlus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, type ChangeEvent } from 'react';
+import { Loader2, Camera, Edit2, X, LogOut, Share2, Check, ImagePlus } from 'lucide-react';
 import type { UserProfile } from '../../types/profile';
 
 interface ProfileHeaderProps {
@@ -21,7 +20,16 @@ interface ProfileHeaderProps {
 export const ProfileHeader = ({
   profile, isEditingBio, newBio, uploadingAvatar, uploadingBanner,
   onBioChange, onEditBio, onBioSave, onBioCancel, onAvatarUpload, onBannerUpload, onSignOut,
-}: ProfileHeaderProps) => (
+}: ProfileHeaderProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/u/${profile.username}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
   <div className="relative mb-12 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden">
 
     {/* Banner como fondo de toda la sección */}
@@ -82,13 +90,13 @@ export const ProfileHeader = ({
             {profile.email}
           </p>
           {profile.username && (
-            <Link
-              to={`/u/${profile.username}`}
-              target="_blank"
+            <button
+              onClick={handleShare}
               className="flex items-center gap-1 text-[10px] font-bold text-zinc-600 hover:text-[#FF3B3B] uppercase tracking-widest transition-colors"
             >
-              <ExternalLink size={11} /> Perfil público
-            </Link>
+              {copied ? <Check size={11} /> : <Share2 size={11} />}
+              {copied ? '¡Copiado!' : 'Compartir perfil'}
+            </button>
           )}
         </div>
 
@@ -126,4 +134,5 @@ export const ProfileHeader = ({
       </div>
     </div>
   </div>
-);
+  );
+};

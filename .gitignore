@@ -10,10 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-.agents
-.claude
+# Claude Code / AI tools
+.agents/
+.claude/
+.claudecodeignore
 .opencode/
-!.opencode/skills/
 *.local
 
 # Editor directories and files
