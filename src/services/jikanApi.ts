@@ -125,7 +125,7 @@ export const advancedSearchAnime = (filters: AdvancedSearchFilters) => {
   if (filters.end_date)   params.append('end_date',   filters.end_date);
   if (filters.limit)      params.append('limit',      filters.limit.toString());
   if (filters.page)       params.append('page',       filters.page.toString());
-  return cachedFetch(
+  return cachedFetch<JikanResponse>(
     `adv:${params.toString()}`,
     () => jikanGet(`${BASE_URL}/anime?${params.toString()}`),
     5 * 60 * 1000,

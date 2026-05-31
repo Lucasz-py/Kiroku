@@ -4,7 +4,7 @@ import { useGSAP } from '@gsap/react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import {
-  Loader2, Tv, CheckCircle, Heart, Hourglass,
+  Tv, CheckCircle, Heart, Hourglass,
   CalendarDays, Timer, Star, Play, Clock, Activity,
 } from 'lucide-react';
 import type { UserProfile, SavedAnime, UserStats } from '../types/profile';
