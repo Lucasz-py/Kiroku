@@ -28,23 +28,27 @@ const AnimatedRoutes = () => {
   const location = useLocation();
   const [displayLocation, setDisplayLocation] = useState(location);
   const [transitionStage, setTransitionStage] = useState<'enter' | 'exit'>('enter');
-  const prevKey = useRef(location.key);
+  const prevPathname = useRef(location.pathname);
 
   useEffect(() => {
-    if (location.key !== prevKey.current) {
+    if (location.pathname !== prevPathname.current) {
+      // Cambio real de página → transición completa
       setTransitionStage('exit');
       const timer = setTimeout(() => {
         setDisplayLocation(location);
         setTransitionStage('enter');
-        prevKey.current = location.key;
+        prevPathname.current = location.pathname;
       }, 160);
       return () => clearTimeout(timer);
+    } else {
+      // Solo cambiaron search params → actualiza sin desmontar ni animar
+      setDisplayLocation(location);
     }
   }, [location]);
 
   return (
     <div
-      key={displayLocation.key}
+      key={displayLocation.pathname}
       className={transitionStage === 'enter' ? 'page-enter' : 'page-exit'}
       style={{ minHeight: '100%' }}
     >

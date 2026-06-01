@@ -4,6 +4,8 @@ import { getTopAnimes } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import { Flame, Star, Loader2 } from 'lucide-react';
 import { RankingRow } from '../components/home/RankingRow';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 const MODES = [
   {
@@ -47,6 +49,22 @@ export const RankingPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore]         = useState(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const headerRef   = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    gsap.fromTo('.rk-label',
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power4.out' }
+    );
+    gsap.fromTo('.rk-title',
+      { opacity: 0, y: 22, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'power4.out', delay: 0.08 }
+    );
+    gsap.fromTo('.rk-selector',
+      { opacity: 0, y: 14 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out', delay: 0.18 }
+    );
+  }, { scope: headerRef });
 
   const isPopular   = filter === 'popular';
   const activeMode  = isPopular ? MODES[1] : MODES[0];
@@ -96,21 +114,21 @@ export const RankingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
-      <div className="container mx-auto max-w-[860px]">
+      <div ref={headerRef} className="container mx-auto max-w-[860px]">
 
         {/* ── Header ── */}
         <div className="mb-8">
-          <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+          <p className="rk-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
             <activeMode.icon size={15} className="text-[#FF3B3B]/50" />
             {isPopular ? 'Tendencias' : 'Mejor puntuados'}
           </p>
-          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">
+          <h1 className="rk-title text-4xl md:text-6xl font-black text-white tracking-tight">
             {activeMode.label}
           </h1>
         </div>
 
         {/* ── Selector de ranking ── */}
-        <div className="relative grid grid-cols-2 bg-[#11131A] border border-[#FF3B3B]/15 rounded-2xl p-1.5 gap-1.5 mb-8 overflow-hidden">
+        <div className="rk-selector relative grid grid-cols-2 bg-[#11131A] border border-[#FF3B3B]/15 rounded-2xl p-1.5 gap-1.5 mb-8 overflow-hidden">
           {/* Hairline top accent */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/25 to-transparent pointer-events-none" />
 

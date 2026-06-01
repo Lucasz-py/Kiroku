@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus } from 'lucide-r
 import { getCurrentSeason, getSeasonAnimes, getSeasonLabel } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import { AnimeCard } from '../components/AnimeCard';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 const SEASONS = ['winter', 'spring', 'summer', 'fall'] as const;
 type Season = typeof SEASONS[number];
@@ -52,7 +54,24 @@ export const SeasonalPage = () => {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const fetchIdRef = useRef(0);
+  const fetchIdRef  = useRef(0);
+  const headerRef   = useRef<HTMLDivElement>(null);
+
+  // Anima el título en cada cambio de temporada — se repite al navegar entre seasons
+  useGSAP(() => {
+    gsap.fromTo('.sea-label',
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power4.out' }
+    );
+    gsap.fromTo('.sea-title',
+      { opacity: 0, y: 22, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'power4.out', delay: 0.08 }
+    );
+    gsap.fromTo('.sea-nav',
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.18 }
+    );
+  }, { scope: headerRef, dependencies: [year, season] });
 
   const fetchAnimes = useCallback(async (
     y: number, s: Season, t: string, p: number, append = false
@@ -104,22 +123,22 @@ export const SeasonalPage = () => {
 
   return (
     <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
-      <div className="container mx-auto max-w-[1400px]">
+      <div ref={headerRef} className="container mx-auto max-w-[1400px]">
 
         {/* ── Header ── */}
         <div className="mb-10">
-          <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+          <p className="sea-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
             <CalendarDays size={15} className="text-[#FF3B3B]/50" />
             Temporada
           </p>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-none">
+            <h1 className="sea-title text-4xl md:text-6xl font-black text-white tracking-tight leading-none">
               {getSeasonLabel(season)}{' '}
               <span className="text-zinc-600">{year}</span>
             </h1>
 
             {/* Navegación de temporada */}
-            <div className="flex items-center gap-2">
+            <div className="sea-nav flex items-center gap-2">
               <button
                 onClick={() => navigateSeason('prev')}
                 className="flex items-center gap-1.5 px-4 py-2 border border-[#FF3B3B]/20 bg-[#11131A] text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:bg-[#FF3B3B] hover:text-white hover:border-[#FF3B3B] transition-all rounded-xl"

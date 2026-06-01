@@ -1,25 +1,17 @@
+import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 
-// Paleta con separación de matiz clara: rojo → naranja → dorado → rosa → violeta
-// Cada color está ~60-90° alejado del anterior para máxima distinción en el chart
-const COLORS = [
-  '#FF3B3B', // rojo     (0°)   — brand
-  '#FF8800', // naranja  (25°)  — cálido
-  '#FBBF24', // dorado   (45°)  — cálido/brillante
-  '#F472B6', // rosa     (325°) — viraje opuesto
-  '#A855F7', // violeta  (285°) — frío/complementario
-];
-
+const COLORS      = ['#FF3B3B', '#FF8800', '#FBBF24', '#F472B6', '#A855F7'];
 const RANK_COLORS = ['#FF3B3B', '#FF8800', '#FBBF24', '#F472B6', '#A855F7'];
+
+// Spring con ligero overshoot
+const SPRING = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
+// Deceleración rápida — entradas de mount
+const SNAPPY = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 const GAP = 0.04;
 
-function slicePath(
-  outerR: number,
-  innerR: number,
-  startAngle: number,
-  endAngle: number,
-): string {
+function slicePath(outerR: number, innerR: number, startAngle: number, endAngle: number): string {
   const s = startAngle + GAP / 2;
   const e = endAngle   - GAP / 2;
   if (e - s < 0.01) return '';
@@ -40,6 +32,15 @@ interface Props {
 }
 
 export const GenrePieChart = ({ genres }: Props) => {
+  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
+  const [mounted,      setMounted]      = useState(false);
+
+  // RAF para disparar animación de barras en el primer frame pintado
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const top   = genres.slice(0, 5);
   const total = top.reduce((s, g) => s + g.count, 0);
 
@@ -72,24 +73,20 @@ export const GenrePieChart = ({ genres }: Props) => {
   return (
     <div className="profile-section bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
 
-      {/* Header */}
       <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
         <Star size={14} className="text-[#FF3B3B]/60" /> Géneros Favoritos
       </p>
 
       <div className="flex items-center gap-5">
 
-        {/* ── Donut chart ── */}
+        {/* ── Donut chart con hover por sector ── */}
         <div className="shrink-0 w-[144px] h-[144px]">
-          <svg viewBox="-50 -50 100 100" className="w-full h-full overflow-visible">
+          <svg
+            viewBox="-50 -50 100 100"
+            className="w-full h-full overflow-visible"
+            onMouseLeave={() => setHoveredSlice(null)}
+          >
             <defs>
-              {/* Gradiente radial de fondo para darle profundidad al hueco */}
-              <radialGradient id="donut-bg" cx="50%" cy="50%" r="50%">
-                <stop offset="0%"   stopColor="#0D0F15" stopOpacity="0" />
-                <stop offset="100%" stopColor="#0D0F15" stopOpacity="0" />
-              </radialGradient>
-
-              {/* Glow por sector */}
               {slices.map((_, i) => (
                 <filter key={i} id={`glow-g-${i}`} x="-25%" y="-25%" width="150%" height="150%">
                   <feGaussianBlur stdDeviation="2" result="blur" />
@@ -101,56 +98,95 @@ export const GenrePieChart = ({ genres }: Props) => {
               ))}
             </defs>
 
-            {slices.map((s, i) => (
-              <path
-                key={i}
-                d={s.path}
-                fill={s.color}
-                filter={`url(#glow-g-${i})`}
-                opacity={0.90}
-              />
-            ))}
+            {slices.map((s, i) => {
+              const isHovered = hoveredSlice === i;
+              const isDimmed  = hoveredSlice !== null && !isHovered;
+              return (
+                <path
+                  key={i}
+                  d={s.path}
+                  fill={s.color}
+                  filter={`url(#glow-g-${i})`}
+                  // scale desde el centro del SVG (0,0) — spring con ligero overshoot
+                  style={{
+                    transform:       isHovered ? 'scale(1.07)' : 'scale(1)',
+                    transformOrigin: '0 0',
+                    opacity:         isDimmed ? 0.4 : 0.90,
+                    cursor:          'default',
+                    transition:      `transform 200ms ${SPRING}, opacity 180ms ease-out`,
+                  }}
+                  onMouseEnter={() => setHoveredSlice(i)}
+                />
+              );
+            })}
           </svg>
         </div>
 
-        {/* ── Leyenda ── */}
-        <div className="flex-1 flex flex-col gap-2.5 min-w-0">
-          {slices.map((s, i) => (
-            <div key={s.label} className="group">
+        {/* ── Leyenda sincronizada con el gráfico ── */}
+        <div
+          className="flex-1 flex flex-col gap-2.5 min-w-0"
+          onMouseLeave={() => setHoveredSlice(null)}
+        >
+          {slices.map((s, i) => {
+            const isActive = hoveredSlice === i;
+            const isDimmed = hoveredSlice !== null && !isActive;
+            return (
+              <div
+                key={s.label}
+                onMouseEnter={() => setHoveredSlice(i)}
+                style={{
+                  transform:  isActive ? 'translateX(3px)' : 'translateX(0)',
+                  opacity:    isDimmed ? 0.4 : 1,
+                  transition: `transform 180ms ${SPRING}, opacity 150ms ease-out`,
+                }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {/* Dot: scale cuando el item está activo */}
+                  <div
+                    style={{
+                      background: s.color,
+                      transform:  isActive ? 'scale(1.35)' : 'scale(1)',
+                      transition: `transform 200ms ${SPRING}`,
+                    }}
+                    className="w-2 h-2 rounded-full shrink-0"
+                  />
+                  <span
+                    className="text-xs font-black w-5 shrink-0 tabular-nums text-right"
+                    style={{ color: RANK_COLORS[i] }}
+                  >
+                    #{i + 1}
+                  </span>
+                  <span
+                    className="text-xs font-bold truncate flex-1"
+                    style={{
+                      color:      isActive ? '#e4e4e7' : '#a1a1aa',
+                      transition: 'color 150ms ease-out',
+                    }}
+                  >
+                    {s.label}
+                  </span>
+                  <span className="text-xs font-black tabular-nums shrink-0" style={{ color: s.color }}>
+                    {s.pct}%
+                  </span>
+                </div>
 
-              {/* Fila: rank + nombre + porcentaje */}
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className="text-xs font-black w-5 shrink-0 tabular-nums text-right"
-                  style={{ color: RANK_COLORS[i] }}
-                >
-                  #{i + 1}
-                </span>
-                <span className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors truncate flex-1">
-                  {s.label}
-                </span>
-                <span
-                  className="text-xs font-black tabular-nums shrink-0"
-                  style={{ color: s.color }}
-                >
-                  {s.pct}%
-                </span>
+                {/* Barra proporcional */}
+                <div className="h-[2px] bg-[#0D0F15] rounded-full overflow-hidden ml-9">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width:           `${(s.count / maxCount) * 100}%`,
+                      background:      s.color,
+                      opacity:         isActive ? 0.85 : 0.6,
+                      transform:       mounted ? 'scaleX(1)' : 'scaleX(0)',
+                      transformOrigin: 'left center',
+                      transition:      `transform 500ms ${SNAPPY} ${100 + i * 55}ms, opacity 150ms ease-out`,
+                    }}
+                  />
+                </div>
               </div>
-
-              {/* Barra proporcional */}
-              <div className="h-[2px] bg-[#0D0F15] rounded-full overflow-hidden ml-7">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width:      `${(s.count / maxCount) * 100}%`,
-                    background: s.color,
-                    opacity:    0.6,
-                  }}
-                />
-              </div>
-
-            </div>
-          ))}
+            );
+          })}
         </div>
 
       </div>

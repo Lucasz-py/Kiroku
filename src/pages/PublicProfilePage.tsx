@@ -7,7 +7,7 @@ import { useUserData } from '../contexts/UserDataContext';
 import { supabase } from '../lib/supabase';
 import {
   Loader2, Tv, CheckCircle, Heart, Hourglass,
-  CalendarDays, Timer, Play, Clock, Activity, Star, ArrowLeft,
+  CalendarDays, Timer, Play, Clock, Activity, ArrowLeft,
 } from 'lucide-react';
 import type { UserProfile, SavedAnime, UserStats } from '../types/profile';
 import { parseDurationToMinutes } from '../utils/animeUtils';
@@ -15,51 +15,8 @@ import { ACHIEVEMENTS } from '../constants/profile';
 import { AchievementGallery } from '../components/profile/AchievementGallery';
 import { ActivityFeed } from '../components/profile/ActivityFeed';
 import { AnimeGrid } from '../components/profile/AnimeGrid';
-
-const RankingBar = ({ title, data }: { title: string; data: { label: string; count: number }[] }) => {
-  const max = data[0]?.count || 1;
-  const barColors = [
-    'linear-gradient(90deg,#FF3B3B,#FF6B6B)',
-    'linear-gradient(90deg,#FF6B6B,#FF9B9B)',
-    'linear-gradient(90deg,#FF9B9B,#FFBBBB)',
-  ];
-  return (
-    <div className="bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
-      <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
-        <Star size={14} className="text-[#FF3B3B]/60" /> {title}
-      </p>
-      {data.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {data.map((item, i) => (
-            <div key={item.label} className="flex items-center gap-3">
-              <span
-                className="text-xs font-black w-5 shrink-0 tabular-nums"
-                style={{ color: i === 0 ? '#FF3B3B' : i === 1 ? '#FF7777' : '#FF9B9B' }}
-              >#{i + 1}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-2">
-                  <span
-                    className="font-bold text-zinc-300 truncate mr-2"
-                    style={{ fontSize: i === 0 ? '1rem' : i === 1 ? '0.875rem' : '0.78rem' }}
-                  >{item.label}</span>
-                  <span className="text-xs font-black text-zinc-500 shrink-0 tabular-nums">{item.count}</span>
-                </div>
-                <div className="h-[3px] bg-[#0D0F15] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${(item.count / max) * 100}%`, background: barColors[i] }}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-zinc-600 text-center py-3 italic">Sin datos suficientes.</p>
-      )}
-    </div>
-  );
-};
+import { GenrePieChart } from '../components/profile/GenrePieChart';
+import { StudioBarChart } from '../components/profile/StudioBarChart';
 
 const NotFound = ({ username }: { username?: string }) => (
   <div className="min-h-screen bg-[#080A0F] flex flex-col items-center justify-center gap-6 px-4">
@@ -89,7 +46,6 @@ export const PublicProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  // Step 1: check if the viewer is the profile owner
   useEffect(() => {
     const checkOwner = async () => {
       if (!session) { setOwnerChecked(true); return; }
@@ -100,7 +56,6 @@ export const PublicProfilePage = () => {
     checkOwner();
   }, [session]);
 
-  // Step 2: fetch public data only when confirmed NOT the owner
   useEffect(() => {
     if (!ownerChecked) return;
     if (ownUsername === username) { setLoading(false); return; }
@@ -160,10 +115,10 @@ export const PublicProfilePage = () => {
       completed, pending, watching, favorites,
       topGenres: Object.entries(genreCounts)
         .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count).slice(0, 3),
+        .sort((a, b) => b.count - a.count).slice(0, 5),
       topStudios: Object.entries(studioCounts)
         .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count).slice(0, 3),
+        .sort((a, b) => b.count - a.count).slice(0, 5),
     };
   }, [animes]);
 
@@ -176,7 +131,7 @@ export const PublicProfilePage = () => {
     { label: 'Favoritos',     value: stats.favorites, icon: Heart        },
   ];
 
-  const pageRef = useRef<HTMLDivElement>(null);
+  const pageRef    = useRef<HTMLDivElement>(null);
   const counterRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   useGSAP(() => {
@@ -191,10 +146,7 @@ export const PublicProfilePage = () => {
       const target = heroStats[i].value;
       const obj = { val: 0 };
       gsap.to(obj, {
-        val: target,
-        duration: 1.35,
-        ease: 'power2.out',
-        delay: 0.18 + i * 0.08,
+        val: target, duration: 1.35, ease: 'power2.out', delay: 0.18 + i * 0.08,
         onUpdate() { if (el) el.textContent = Math.round(obj.val).toLocaleString(); },
       });
     });
@@ -220,8 +172,8 @@ export const PublicProfilePage = () => {
           <ArrowLeft size={14} /> Volver
         </Link>
 
-        {/* Profile header (read-only) */}
-        <div className="profile-section relative mb-8 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden">
+        {/* Profile header — [transform:translateZ(0)] fix línea negra (backdrop-blur + overflow:hidden + border-radius) */}
+        <div className="profile-section relative mb-8 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden [transform:translateZ(0)]">
           {profile.banner_url && (
             <img src={profile.banner_url} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
           )}
@@ -290,7 +242,7 @@ export const PublicProfilePage = () => {
           {/* Left sidebar */}
           <div className="lg:col-span-4 flex flex-col gap-5">
 
-            {/* Secondary metrics */}
+            {/* Métricas detalladas */}
             <div className="profile-section bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
                 <Activity size={14} className="text-[#FF3B3B]/50" /> Métricas detalladas
@@ -299,8 +251,8 @@ export const PublicProfilePage = () => {
                 {([
                   { label: 'Total en minutos', value: stats.minutes.toLocaleString(), icon: Timer        },
                   { label: 'Total en días',    value: stats.days,                     icon: CalendarDays },
-                  { label: 'Mirando',    value: stats.watching,                 icon: Play         },
-                  { label: 'Pendientes', value: stats.pending,                  icon: Clock        },
+                  { label: 'Mirando',          value: stats.watching,                 icon: Play         },
+                  { label: 'Pendientes',       value: stats.pending,                  icon: Clock        },
                 ] as const).map(({ label, value, icon: Icon }) => (
                   <div key={label} className="bg-[#0D0F15] border border-[#FF3B3B]/[0.07] rounded-xl p-4">
                     <Icon size={16} className="text-[#FF3B3B]/50 mb-3" />
@@ -311,8 +263,12 @@ export const PublicProfilePage = () => {
               </div>
             </div>
 
-            <div className="profile-section"><RankingBar title="Géneros Favoritos" data={stats.topGenres} /></div>
-            <div className="profile-section"><RankingBar title="Estudios Favoritos" data={stats.topStudios} /></div>
+            {/* Géneros — pie chart con animaciones sincronizadas */}
+            <GenrePieChart genres={stats.topGenres} />
+
+            {/* Estudios — bar chart con animación de entrada */}
+            <StudioBarChart studios={stats.topStudios} />
+
             <div className="profile-section"><ActivityFeed animes={animes} /></div>
             <div className="profile-section"><AchievementGallery unlockedAchievements={unlockedAchievements} /></div>
           </div>

@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import {
@@ -82,7 +84,21 @@ export const WatchlistPage = () => {
   const [loading, setLoading] = useState(true);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const sortRef = useRef<HTMLDivElement>(null);
+  const sortRef   = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  // Anima el título cuando la página termina de cargar (se repite en cada visita)
+  useGSAP(() => {
+    if (loading) return;
+    gsap.fromTo('.wl-label',
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power4.out' }
+    );
+    gsap.fromTo('.wl-title',
+      { opacity: 0, y: 22, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'power4.out', delay: 0.08 }
+    );
+  }, { scope: headerRef, dependencies: [loading] });
   const navigate = useNavigate();
 
   // ── Filtros leídos directamente desde la URL ──────────────────────────────
@@ -210,11 +226,11 @@ export const WatchlistPage = () => {
       <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
 
         {/* Header */}
-        <div className="mb-10">
-          <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
+        <div ref={headerRef} className="mb-10">
+          <p className="wl-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
             <List size={15} className="text-[#FF3B3B]/50" /> Mi Colección
           </p>
-          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-none">
+          <h1 className="wl-title text-4xl md:text-6xl font-black text-white tracking-tight leading-none">
             Watchlist
           </h1>
         </div>
@@ -413,14 +429,14 @@ export const WatchlistPage = () => {
               <Link
                 key={anime.id}
                 to={`/anime/${anime.anime_id}`}
-                className="group relative bg-[#11131A] overflow-hidden rounded-xl border border-[#FF3B3B]/15 hover:border-[#FF3B3B]/40 transition-all duration-300"
+                className="group relative bg-[#11131A] overflow-hidden rounded-xl border border-[#FF3B3B]/15 hover:border-[#FF3B3B]/40 transition-[border-color] duration-500"
               >
                 <div className="relative aspect-[3/4] overflow-hidden">
                   <img
                     src={anime.image_url}
                     alt={anime.title}
                     loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
+                    className="w-full h-full object-cover transition-opacity duration-500 opacity-90 group-hover:opacity-100"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#11131A] via-transparent to-transparent opacity-90" />
                   <div className="absolute bottom-0 left-0 w-full p-3">

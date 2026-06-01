@@ -37,7 +37,7 @@ export const AnimeCard = ({ anime }: AnimeCardProps) => {
     >
       <div className="relative w-full aspect-[3/4] overflow-hidden rounded-xl bg-[#11131A] border border-[#FF3B3B]/10 group-hover:border-[#FF3B3B]/40 transition-all duration-500 shadow-sm group-hover:shadow-[0_0_24px_rgba(255,59,59,0.12)]">
 
-        {/* Blur placeholder mientras carga (#18) */}
+        {/* Blur placeholder mientras carga */}
         {!imgLoaded && (
           <div className="absolute inset-0 bg-gradient-to-br from-[#1A1C24] to-[#0D0F15] animate-pulse" />
         )}
@@ -62,7 +62,7 @@ export const AnimeCard = ({ anime }: AnimeCardProps) => {
           </div>
         )}
 
-        {/* Estado guardado del usuario (#10) */}
+        {/* Estado guardado del usuario */}
         {statusCfg && (
           <div className={`absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-lg border text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm ${statusCfg.color}`}>
             <statusCfg.icon size={9} />

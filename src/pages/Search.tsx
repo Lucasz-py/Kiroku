@@ -5,6 +5,8 @@ import type { Anime } from '../types/anime';
 import { AnimeCard } from '../components/AnimeCard';
 import debounce from 'lodash.debounce';
 import { Dices, RefreshCw, Loader2, FilterX, Filter, X, Plus, Search as SearchIcon, Star, ArrowUpDown, Tv } from 'lucide-react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 const ANIME_TYPES = [ { value: 'tv', label: 'TV (Serie)' }, { value: 'movie', label: 'Película (Cine)' }, { value: 'ova', label: 'OVA (Físico)' }, { value: 'special', label: 'Especial' }, { value: 'ona', label: 'ONA (Web / Netflix)' } ];
 const ANIME_STATUS = [ { value: 'airing', label: 'En Emisión' }, { value: 'complete', label: 'Finalizado' }, { value: 'upcoming', label: 'Por Estrenar' } ];
@@ -103,7 +105,8 @@ export const Search = () => {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('score_desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const sortRef = useRef<HTMLDivElement>(null);
+  const sortRef      = useRef<HTMLDivElement>(null);
+  const discoverRef  = useRef<HTMLDivElement>(null);
 
   const [localFilters, setLocalFilters] = useState({
     type: '', status: '', year: '', season: '', studioId: '', studioName: '', genres: [] as string[]
@@ -211,7 +214,20 @@ export const Search = () => {
   };
 
   const hasActiveFilters = Array.from(searchParams.keys()).length > 0;
-  const isDiscoverMode = !hasActiveFilters && results.length === 0 && !loading;
+  const isDiscoverMode   = !hasActiveFilters && results.length === 0 && !loading;
+
+  // Anima el título cuando entra en discover mode (visita limpia o al borrar todos los filtros)
+  useGSAP(() => {
+    if (!isDiscoverMode || !discoverRef.current) return;
+    gsap.fromTo('.src-label',
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.45, ease: 'power4.out' }
+    );
+    gsap.fromTo('.src-title',
+      { opacity: 0, y: 22, scale: 0.97 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'power4.out', delay: 0.08 }
+    );
+  }, { scope: discoverRef, dependencies: [isDiscoverMode] });
 
   const getActiveFilterTags = () => {
     const tags = [];
@@ -241,11 +257,11 @@ export const Search = () => {
         {/* Search bar + filters */}
         <div className={`max-w-4xl mx-auto transition-all duration-500 ${isDiscoverMode ? 'mt-4 mb-16' : 'mb-8'}`}>
           {isDiscoverMode && (
-            <div className="text-center mb-10">
-              <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center justify-center gap-2">
+            <div ref={discoverRef} className="text-center mb-10">
+              <p className="src-label text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center justify-center gap-2">
                 <SearchIcon size={13} className="text-[#FF3B3B]/50" /> Catálogo
               </p>
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+              <h1 className="src-title text-4xl md:text-5xl font-black text-white tracking-tight">
                 Encuentra tu próximo anime
               </h1>
             </div>
