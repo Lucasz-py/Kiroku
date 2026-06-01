@@ -171,8 +171,8 @@ export const PublicProfilePage = () => {
 
   const heroStats = [
     { label: 'Completados',   value: stats.completed, icon: CheckCircle },
-    { label: 'Horas totales', value: stats.hours,     icon: Hourglass   },
     { label: 'Episodios',     value: stats.episodes,  icon: Tv           },
+    { label: 'Horas totales', value: stats.hours,     icon: Hourglass   },
     { label: 'Favoritos',     value: stats.favorites, icon: Heart        },
   ];
 
@@ -297,8 +297,8 @@ export const PublicProfilePage = () => {
               </p>
               <div className="grid grid-cols-2 gap-2.5">
                 {([
-                  { label: 'Minutos',    value: stats.minutes.toLocaleString(), icon: Timer        },
-                  { label: 'Días',       value: stats.days,                     icon: CalendarDays },
+                  { label: 'Total en minutos', value: stats.minutes.toLocaleString(), icon: Timer        },
+                  { label: 'Total en días',    value: stats.days,                     icon: CalendarDays },
                   { label: 'Mirando',    value: stats.watching,                 icon: Play         },
                   { label: 'Pendientes', value: stats.pending,                  icon: Clock        },
                 ] as const).map(({ label, value, icon: Icon }) => (

@@ -1,9 +1,26 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getTopAnimes } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import { Flame, Star, Loader2 } from 'lucide-react';
 import { RankingRow } from '../components/home/RankingRow';
+
+const MODES = [
+  {
+    filter:  '',
+    path:    '/top/rated',
+    label:   'Mejor Valoradas',
+    sub:     'Por puntuación MAL',
+    icon:    Star,
+  },
+  {
+    filter:  'bypopularity',
+    path:    '/top/popular',
+    label:   'Más Populares',
+    sub:     'Por votos de usuarios',
+    icon:    Flame,
+  },
+] as const;
 
 const SkeletonRow = () => (
   <div className="flex bg-[#0D0F15] rounded-xl border border-[#FF3B3B]/[0.07] overflow-hidden animate-pulse">
@@ -22,16 +39,18 @@ const SkeletonRow = () => (
 
 export const RankingPage = () => {
   const { filter } = useParams();
-  const [animes, setAnimes] = useState<Anime[]>([]);
+  const navigate   = useNavigate();
+
+  const [animes, setAnimes]           = useState<Anime[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]         = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore]         = useState(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const isPopular = filter === 'popular';
+  const isPopular   = filter === 'popular';
+  const activeMode  = isPopular ? MODES[1] : MODES[0];
   const jikanFilter = isPopular ? 'bypopularity' : '';
-  const title = isPopular ? 'Más Populares' : 'Mejor Valoradas';
 
   const fetchRankings = useCallback(async (page: number, append = false) => {
     if (page === 1) setLoading(true); else setLoadingMore(true);
@@ -58,11 +77,9 @@ export const RankingPage = () => {
     window.scrollTo(0, 0);
   }, [filter, jikanFilter]);
 
-  // Infinite scroll con IntersectionObserver (#9)
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loadingMore && !loading && hasMore && animes.length < 100) {
@@ -71,9 +88,8 @@ export const RankingPage = () => {
           fetchRankings(nextPage, true);
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
-
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [currentPage, loadingMore, loading, hasMore, animes.length, fetchRankings]);
@@ -82,19 +98,58 @@ export const RankingPage = () => {
     <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
       <div className="container mx-auto max-w-[860px]">
 
-        <div className="mb-10">
+        {/* ── Header ── */}
+        <div className="mb-8">
           <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2">
-            {isPopular
-              ? <Flame size={15} className="text-[#FF3B3B]/50" />
-              : <Star size={15} className="text-[#FF3B3B]/50" />
-            }
+            <activeMode.icon size={15} className="text-[#FF3B3B]/50" />
             {isPopular ? 'Tendencias' : 'Mejor puntuados'}
           </p>
           <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight">
-            {title}
+            {activeMode.label}
           </h1>
         </div>
 
+        {/* ── Selector de ranking ── */}
+        <div className="relative grid grid-cols-2 bg-[#11131A] border border-[#FF3B3B]/15 rounded-2xl p-1.5 gap-1.5 mb-8 overflow-hidden">
+          {/* Hairline top accent */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/25 to-transparent pointer-events-none" />
+
+          {MODES.map(mode => {
+            const active = activeMode.path === mode.path;
+            return (
+              <button
+                key={mode.path}
+                onClick={() => navigate(mode.path)}
+                className={`group flex items-center gap-3 px-4 md:px-6 py-4 rounded-xl transition-all duration-200 text-left ${
+                  active
+                    ? 'bg-[#FF3B3B] shadow-[0_4px_24px_rgba(255,59,59,0.30)]'
+                    : 'hover:bg-[#0D0F15]'
+                }`}
+              >
+                <mode.icon
+                  size={22}
+                  className={`shrink-0 transition-colors ${
+                    active ? 'text-white' : 'text-[#FF3B3B]/35 group-hover:text-[#FF3B3B]/60'
+                  }`}
+                />
+                <div className="min-w-0">
+                  <p className={`text-xs md:text-sm font-black uppercase tracking-widest leading-tight transition-colors ${
+                    active ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'
+                  }`}>
+                    {mode.label}
+                  </p>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 transition-colors hidden sm:block ${
+                    active ? 'text-white/55' : 'text-zinc-600 group-hover:text-zinc-500'
+                  }`}>
+                    {mode.sub}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Lista ── */}
         <div className="bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-4 md:p-6 relative">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent rounded-t-2xl" />
 
@@ -107,7 +162,6 @@ export const RankingPage = () => {
             }
           </div>
 
-          {/* Sentinel para infinite scroll */}
           <div ref={sentinelRef} className="h-1" />
 
           {loadingMore && (
@@ -118,7 +172,9 @@ export const RankingPage = () => {
 
           {!loading && !hasMore && animes.length > 0 && (
             <div className="mt-6 pt-6 border-t border-[#FF3B3B]/10 text-center">
-              <p className="text-zinc-600 text-[11px] font-bold uppercase tracking-widest">Top {animes.length} cargados</p>
+              <p className="text-zinc-600 text-[11px] font-bold uppercase tracking-widest">
+                Top {animes.length} cargados
+              </p>
             </div>
           )}
         </div>

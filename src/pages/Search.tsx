@@ -433,8 +433,8 @@ export const Search = () => {
                     <Dices size={13} className="text-[#FF3B3B]/50" /> Descubrimiento
                   </p>
                   <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">¿No sabes qué ver?</h2>
-                  <p className="text-zinc-400 text-sm leading-relaxed mb-8 max-w-xs">
-                    Deja que el destino elija tu próxima aventura. Nuestra base de datos elegirá una serie o película al azar para ti.
+                  <p className="text-zinc-400 text-md leading-relaxed mb-8 max-w-xs">
+                    Deja que el destino elija tu próxima aventura. Kiroku elegirá una serie o película al azar para ti.
                   </p>
                   <button onClick={handlePickRandomAnime} disabled={loadingRandom}
                     className="inline-flex items-center gap-3 px-6 py-3 bg-[#FF3B3B] text-white font-black tracking-widest text-xs uppercase hover:bg-[#FF5555] transition-colors disabled:opacity-60 rounded-xl">

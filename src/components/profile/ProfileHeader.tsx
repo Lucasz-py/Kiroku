@@ -30,7 +30,7 @@ export const ProfileHeader = ({
   };
 
   return (
-  <div className="relative mb-12 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden">
+  <div className="relative mb-12 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden [transform:translateZ(0)]">
 
     {/* Banner como fondo de toda la sección */}
     {profile.banner_url && (
@@ -48,7 +48,7 @@ export const ProfileHeader = ({
     {/* Botón cambiar banner — esquina superior derecha */}
     <label className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 bg-[#0D0F15]/70 backdrop-blur-sm border border-white/10 text-zinc-300 hover:text-white hover:bg-[#0D0F15]/90 cursor-pointer transition-all rounded-lg text-xs font-bold uppercase tracking-widest">
       {uploadingBanner ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
-      {uploadingBanner ? 'Subiendo...' : 'Cambiar banner'}
+      <span className="hidden sm:inline">{uploadingBanner ? 'Subiendo...' : 'Cambiar banner'}</span>
       <input type="file" accept="image/*" className="hidden" onChange={onBannerUpload} disabled={uploadingBanner} />
     </label>
 
@@ -62,7 +62,7 @@ export const ProfileHeader = ({
     </button>
 
     {/* Contenido */}
-    <div className="relative z-10 px-8 py-12 md:py-16 flex items-center gap-10">
+    <div className="relative z-10 px-4 py-8 pb-16 md:px-8 md:py-16 flex flex-col md:flex-row items-center gap-6 md:gap-10">
 
       {/* Avatar */}
       <div className="relative shrink-0">
@@ -80,7 +80,7 @@ export const ProfileHeader = ({
       </div>
 
       {/* Info */}
-      <div className="flex-1 text-center md:text-left max-w-2xl">
+      <div className="flex-1 w-full text-center md:text-left max-w-2xl">
         <h1 className="text-4xl md:text-5xl font-black text-white mb-1 tracking-tight">
           {profile.username}
         </h1>

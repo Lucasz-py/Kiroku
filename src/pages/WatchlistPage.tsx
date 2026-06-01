@@ -1,7 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { BookmarkCheck, Eye, Clock, Heart, List, Search, Star, LayoutGrid, AlignJustify, type LucideIcon } from 'lucide-react';
+import {
+  BookmarkCheck, Eye, Clock, Heart, List, Search,
+  Star, LayoutGrid, AlignJustify, ArrowUpDown, X, type LucideIcon,
+} from 'lucide-react';
 import type { SavedAnime } from '../types/profile';
 
 const TABS = [
@@ -18,6 +21,16 @@ const STATUS_ICON: Record<string, { icon: LucideIcon; color: string }> = {
   Pendiente:  { icon: Clock,         color: 'text-[#FF9B9B]' },
 };
 
+const SORT_OPTIONS = [
+  { value: 'recent',     label: 'Más recientes' },
+  { value: 'score_desc', label: 'Mayor puntuación' },
+  { value: 'score_asc',  label: 'Menor puntuación' },
+  { value: 'az',         label: 'A → Z' },
+  { value: 'za',         label: 'Z → A' },
+] as const;
+
+type SortKey = typeof SORT_OPTIONS[number]['value'];
+
 const WatchlistSkeleton = () => (
   <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 font-sans">
     <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
@@ -25,8 +38,13 @@ const WatchlistSkeleton = () => (
         <div className="h-2.5 w-20 bg-[#11131A] rounded-full animate-pulse mb-3" />
         <div className="h-10 w-48 bg-[#11131A] rounded-xl animate-pulse" />
       </div>
-      <div className="flex gap-2 mb-8 overflow-hidden">
+      <div className="flex gap-2 mb-4 overflow-hidden">
         {[...Array(5)].map((_, i) => <div key={i} className="h-9 w-28 shrink-0 bg-[#11131A] rounded-xl animate-pulse" />)}
+      </div>
+      <div className="flex gap-2 mb-8">
+        <div className="h-9 flex-1 bg-[#11131A] rounded-xl animate-pulse" />
+        <div className="h-9 w-32 bg-[#11131A] rounded-xl animate-pulse" />
+        <div className="h-9 w-9 bg-[#11131A] rounded-xl animate-pulse" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
         {[...Array(12)].map((_, i) => (
@@ -43,7 +61,6 @@ const WatchlistSkeleton = () => (
   </div>
 );
 
-// Empty state ilustrado (#15)
 const WatchlistEmpty = () => (
   <div className="col-span-full flex flex-col items-center py-24 gap-4 text-center">
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="opacity-20">
@@ -63,10 +80,38 @@ const WatchlistEmpty = () => (
 export const WatchlistPage = () => {
   const [animes, setAnimes] = useState<SavedAnime[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Todos');
-  const [searchQ, setSearchQ] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sortRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // ── Filtros leídos directamente desde la URL ──────────────────────────────
+  const activeTab   = searchParams.get('tab')  ?? 'Todos';
+  const searchQ     = searchParams.get('q')    ?? '';
+  const sortKey     = (searchParams.get('sort') as SortKey) ?? 'recent';
+  const viewMode    = (searchParams.get('view') as 'grid' | 'list') ?? 'grid';
+  const selectedGenres = useMemo(
+    () => searchParams.get('genres')?.split(',').filter(Boolean) ?? [],
+    [searchParams],
+  );
+
+  // ── Helper para actualizar un param sin crear nueva entrada en historial ──
+  const setParam = (key: string, value: string | null, defaultVal = '') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === defaultVal) next.delete(key);
+      else next.set(key, value);
+      return next;
+    }, { replace: true });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setShowSortDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -83,13 +128,68 @@ export const WatchlistPage = () => {
     init();
   }, [navigate]);
 
+  const availableGenres = useMemo(() => {
+    const set = new Set<string>();
+    animes.forEach(a => a.genres?.forEach(g => set.add(g)));
+    return Array.from(set).sort();
+  }, [animes]);
+
+  const toggleGenre = (genre: string) => {
+    const next = selectedGenres.includes(genre)
+      ? selectedGenres.filter(g => g !== genre)
+      : [...selectedGenres, genre];
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      if (next.length === 0) p.delete('genres');
+      else p.set('genres', next.join(','));
+      return p;
+    }, { replace: true });
+  };
+
+  const clearGenres = () => setParam('genres', null);
+
   const filtered = useMemo(() => {
     let list = animes;
+
     if (activeTab === 'Favoritos') list = list.filter(a => a.is_favorite);
     else if (activeTab !== 'Todos') list = list.filter(a => a.status === activeTab);
+
     if (searchQ.trim()) list = list.filter(a => a.title.toLowerCase().includes(searchQ.toLowerCase()));
-    return list;
-  }, [animes, activeTab, searchQ]);
+
+    if (selectedGenres.length > 0) {
+      list = list.filter(a => selectedGenres.some(g => a.genres?.includes(g)));
+    }
+
+    const sorted = [...list];
+    switch (sortKey) {
+      case 'score_desc':
+        sorted.sort((a, b) => {
+          if (a.score == null && b.score == null) return 0;
+          if (a.score == null) return 1;
+          if (b.score == null) return -1;
+          return b.score - a.score;
+        });
+        break;
+      case 'score_asc':
+        sorted.sort((a, b) => {
+          if (a.score == null && b.score == null) return 0;
+          if (a.score == null) return 1;
+          if (b.score == null) return -1;
+          return a.score - b.score;
+        });
+        break;
+      case 'az':
+        sorted.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'za':
+        sorted.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      default:
+        break;
+    }
+
+    return sorted;
+  }, [animes, activeTab, searchQ, selectedGenres, sortKey]);
 
   const counts = useMemo(() => ({
     Todos:      animes.length,
@@ -98,6 +198,10 @@ export const WatchlistPage = () => {
     Pendiente:  animes.filter(a => a.status === 'Pendiente').length,
     Favoritos:  animes.filter(a => a.is_favorite).length,
   }), [animes]);
+
+  const currentSortLabel = SORT_OPTIONS.find(s => s.value === sortKey)?.label ?? 'Ordenar';
+  const hasActiveGenres  = selectedGenres.length > 0;
+  const hasActiveFilters = hasActiveGenres || sortKey !== 'recent' || searchQ.trim().length > 0;
 
   if (loading) return <WatchlistSkeleton />;
 
@@ -115,38 +219,70 @@ export const WatchlistPage = () => {
           </h1>
         </div>
 
-        {/* Tabs + search + toggle */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {TABS.map(tab => (
+        {/* Tabs */}
+        <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mb-4">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setParam('tab', tab.id, 'Todos')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all ${
+                activeTab === tab.id
+                  ? 'bg-[#FF3B3B] text-white border-[#FF3B3B]'
+                  : 'bg-[#11131A] text-zinc-500 border-[#FF3B3B]/15 hover:border-[#FF3B3B]/40 hover:text-zinc-300'
+              }`}
+            >
+              <tab.icon size={12} />
+              {tab.label}
+              <span className={`text-[11px] tabular-nums ${activeTab === tab.id ? 'text-white/70' : 'text-zinc-600'}`}>
+                {counts[tab.id as keyof typeof counts]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search + Sort + Toggle */}
+        <div className={`flex flex-col sm:flex-row gap-3 ${availableGenres.length > 0 ? 'mb-4' : 'mb-8'}`}>
+          <input
+            type="text"
+            placeholder="Buscar por nombre..."
+            value={searchQ}
+            onChange={e => setParam('q', e.target.value)}
+            className="flex-1 px-4 py-2 bg-[#11131A] border border-[#FF3B3B]/15 focus:border-[#FF3B3B] focus:outline-none text-white text-xs font-bold rounded-xl placeholder:text-zinc-600 transition-all"
+          />
+          <div className="flex gap-2 shrink-0">
+            {/* Sort dropdown */}
+            <div className="relative" ref={sortRef}>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-[#FF3B3B] text-white border-[#FF3B3B]'
-                    : 'bg-[#11131A] text-zinc-500 border-[#FF3B3B]/15 hover:border-[#FF3B3B]/40 hover:text-zinc-300'
+                onClick={() => setShowSortDropdown(v => !v)}
+                className={`flex items-center gap-2 px-4 py-2 border text-xs font-bold uppercase tracking-widest rounded-xl transition-all whitespace-nowrap ${
+                  sortKey !== 'recent'
+                    ? 'bg-[#FF3B3B]/10 border-[#FF3B3B]/40 text-[#FF3B3B]'
+                    : 'bg-[#11131A] border-[#FF3B3B]/15 text-zinc-400 hover:text-zinc-200 hover:border-[#FF3B3B]/30'
                 }`}
               >
-                <tab.icon size={12} />
-                {tab.label}
-                <span className={`text-[11px] tabular-nums ${activeTab === tab.id ? 'text-white/70' : 'text-zinc-600'}`}>
-                  {counts[tab.id as keyof typeof counts]}
-                </span>
+                <ArrowUpDown size={13} />
+                <span className="hidden sm:inline">{currentSortLabel}</span>
               </button>
-            ))}
-          </div>
+              {showSortDropdown && (
+                <div className="absolute right-0 top-full mt-2 bg-[#0D0F15] border border-[#FF3B3B]/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] z-50 min-w-44 rounded-xl overflow-hidden">
+                  {SORT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setParam('sort', opt.value, 'recent'); setShowSortDropdown(false); }}
+                      className={`w-full text-left px-4 py-3 text-xs font-bold transition-colors hover:bg-[#11131A] border-b border-[#FF3B3B]/[0.07] last:border-0 ${
+                        sortKey === opt.value ? 'text-[#FF3B3B] bg-[#11131A]/80' : 'text-zinc-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div className="sm:ml-auto flex gap-2">
-            <input
-              type="text"
-              placeholder="Filtrar por nombre..."
-              value={searchQ}
-              onChange={e => setSearchQ(e.target.value)}
-              className="flex-1 sm:w-56 px-4 py-2 bg-[#11131A] border border-[#FF3B3B]/15 focus:border-[#FF3B3B] focus:outline-none text-white text-xs font-bold rounded-xl placeholder:text-zinc-600 transition-all"
-            />
+            {/* Grid/list toggle */}
             <button
-              onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+              onClick={() => setParam('view', viewMode === 'grid' ? 'list' : 'grid', 'grid')}
               title={viewMode === 'grid' ? 'Vista lista' : 'Vista grid'}
               className="px-3 py-2 bg-[#11131A] border border-[#FF3B3B]/15 hover:border-[#FF3B3B]/40 text-zinc-500 hover:text-zinc-200 rounded-xl transition-all shrink-0"
             >
@@ -154,6 +290,69 @@ export const WatchlistPage = () => {
             </button>
           </div>
         </div>
+
+        {/* Genre chips */}
+        {availableGenres.length > 0 && (
+          <div className="mb-8">
+            {/* Header: label + limpiar (siempre visible fuera del scroll) */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+                Categorías
+              </span>
+              {hasActiveGenres && (
+                <button
+                  onClick={clearGenres}
+                  className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-[#FF3B3B] transition-colors"
+                >
+                  <X size={11} /> Limpiar
+                </button>
+              )}
+            </div>
+
+            {/* Chips scrolleables */}
+            <div className="relative">
+              <div className="flex items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-0.5">
+                <button
+                  onClick={clearGenres}
+                  className={`shrink-0 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border rounded-lg transition-all ${
+                    !hasActiveGenres
+                      ? 'bg-[#FF3B3B]/10 border-[#FF3B3B]/60 text-[#FF3B3B]'
+                      : 'bg-[#0D0F15] border-[#FF3B3B]/[0.07] text-zinc-500 hover:border-[#FF3B3B]/30 hover:text-white'
+                  }`}
+                >
+                  Todos
+                </button>
+                {availableGenres.map(genre => (
+                  <button
+                    key={genre}
+                    onClick={() => toggleGenre(genre)}
+                    className={`shrink-0 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest border rounded-lg transition-all whitespace-nowrap ${
+                      selectedGenres.includes(genre)
+                        ? 'bg-[#FF3B3B]/10 border-[#FF3B3B]/60 text-[#FF3B3B]'
+                        : 'bg-[#0D0F15] border-[#FF3B3B]/[0.07] text-zinc-500 hover:border-[#FF3B3B]/30 hover:text-white'
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+              {/* Gradiente indicador de scroll — solo mobile */}
+              <div className="md:hidden absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[#080A0F] to-transparent pointer-events-none" />
+            </div>
+
+            {/* Texto indicador de scroll — solo mobile */}
+            <p className="md:hidden mt-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-700 flex items-center gap-1">
+              <span>←</span> Desliza para ver más categorías <span>→</span>
+            </p>
+          </div>
+        )}
+
+        {/* Contador cuando hay filtros activos */}
+        {hasActiveFilters && (
+          <p className="text-[11px] text-zinc-600 font-bold uppercase tracking-widest mb-4 tabular-nums">
+            {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+          </p>
+        )}
 
         {filtered.length === 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -180,13 +379,26 @@ export const WatchlistPage = () => {
                     <span className={`flex items-center gap-1 text-xs font-bold uppercase tracking-wide ${color}`}>
                       <Icon size={11} />{anime.status}
                     </span>
+                    {anime.genres && anime.genres.length > 0 && (
+                      <div className="flex gap-1 mt-1.5 flex-wrap">
+                        {anime.genres.slice(0, 3).map(g => (
+                          <span key={g} className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                            selectedGenres.includes(g)
+                              ? 'bg-[#FF3B3B]/10 border-[#FF3B3B]/30 text-[#FF7777]'
+                              : 'bg-[#0D0F15] border-[#FF3B3B]/[0.07] text-zinc-600'
+                          }`}>
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     {anime.is_favorite && <Heart size={13} className="fill-[#FF3B3B] text-[#FF3B3B]" />}
-                    {anime.user_score && (
+                    {anime.user_score != null && (
                       <div className="flex items-center gap-0.5 bg-[#0D0F15] border border-[#FF3B3B]/20 px-2 py-1 rounded-lg">
                         <Star size={11} className="fill-[#FF3B3B] text-[#FF3B3B]" />
-                        <span className="text-white text-xs font-black">{anime.user_score}</span>
+                        <span className="text-white text-xs font-black tabular-nums">{anime.user_score}</span>
                       </div>
                     )}
                   </div>
@@ -232,10 +444,10 @@ export const WatchlistPage = () => {
                       <Heart size={12} className="fill-[#FF3B3B] text-[#FF7777]" />
                     </div>
                   )}
-                  {anime.user_score && (
+                  {anime.user_score != null && (
                     <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-[#0D0F15]/90 backdrop-blur-sm border border-[#FF3B3B]/20 px-1.5 py-1 rounded-md">
                       <Star size={11} className="fill-[#FF3B3B] text-[#FF3B3B]" />
-                      <span className="text-white text-xs font-black">{anime.user_score}</span>
+                      <span className="text-white text-xs font-black tabular-nums">{anime.user_score}</span>
                     </div>
                   )}
                 </div>

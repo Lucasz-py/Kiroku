@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import {
   Tv, CheckCircle, Heart, Hourglass,
-  CalendarDays, Timer, Star, Play, Clock, Activity,
+  CalendarDays, Timer, Play, Clock, Activity,
 } from 'lucide-react';
 import type { UserProfile, SavedAnime, UserStats } from '../types/profile';
 import { toWebP } from '../utils/imageUtils';
@@ -16,54 +16,8 @@ import { AchievementGallery } from '../components/profile/AchievementGallery';
 import { AnimeGrid } from '../components/profile/AnimeGrid';
 import { ActivityFeed } from '../components/profile/ActivityFeed';
 import { ProfileOnboarding } from '../components/profile/ProfileOnboarding';
-
-// ─── LOCAL COMPONENT: horizontal ranking bars ────────────────────────────────
-const RankingCard = ({ title, data }: { title: string; data: { label: string; count: number }[] }) => {
-  const max = data[0]?.count || 1;
-  const barColors = [
-    'linear-gradient(90deg,#FF3B3B,#FF6B6B)',
-    'linear-gradient(90deg,#FF6B6B,#FF9B9B)',
-    'linear-gradient(90deg,#FF9B9B,#FFBBBB)',
-  ];
-  return (
-    <div className="profile-section bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
-      <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
-        <Star size={14} className="text-[#FF3B3B]/60" /> {title}
-      </p>
-      {data.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {data.map((item, i) => (
-            <div key={item.label} className="flex items-center gap-3">
-              <span
-                className="text-sm font-black w-5 shrink-0 tabular-nums"
-                style={{ color: i === 0 ? '#FF3B3B' : i === 1 ? '#FF7777' : '#FF9B9B' }}
-              >
-                #{i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-2">
-                  <span
-                    className="font-bold text-zinc-300 truncate mr-2"
-                    style={{ fontSize: i === 0 ? '1rem' : i === 1 ? '0.9rem' : '0.82rem' }}
-                  >{item.label}</span>
-                  <span className="text-xs font-black text-zinc-500 shrink-0 tabular-nums">{item.count}</span>
-                </div>
-                <div className="h-[3px] bg-[#0D0F15] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${(item.count / max) * 100}%`, background: barColors[i] }}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-zinc-600 text-center py-3 italic">Sin datos suficientes.</p>
-      )}
-    </div>
-  );
-};
+import { GenrePieChart } from '../components/profile/GenrePieChart';
+import { StudioBarChart } from '../components/profile/StudioBarChart';
 
 // ─── PAGE ────────────────────────────────────────────────────────────────────
 export const Profile = () => {
@@ -206,10 +160,10 @@ export const Profile = () => {
       completed, pending, watching, favorites,
       topGenres: Object.entries(genreCounts)
         .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count).slice(0, 3),
+        .sort((a, b) => b.count - a.count).slice(0, 5),
       topStudios: Object.entries(studioCounts)
         .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count).slice(0, 3),
+        .sort((a, b) => b.count - a.count).slice(0, 5),
     };
   }, [animes]);
 
@@ -217,10 +171,10 @@ export const Profile = () => {
 
   // Hero stat tiles: defined before useGSAP so the closure captures current values
   const heroStats = [
-    { label: 'Completados',  value: stats.completed, icon: CheckCircle },
+    { label: 'Completados',   value: stats.completed, icon: CheckCircle },
+    { label: 'Episodios',     value: stats.episodes,  icon: Tv           },
     { label: 'Horas totales', value: stats.hours,     icon: Hourglass   },
-    { label: 'Episodios',    value: stats.episodes,  icon: Tv           },
-    { label: 'Favoritos',    value: stats.favorites, icon: Heart        },
+    { label: 'Favoritos',     value: stats.favorites, icon: Heart        },
   ];
 
   // ── GSAP: stagger entrance + numeric counters ──────────────────────────────
@@ -356,8 +310,8 @@ export const Profile = () => {
               </p>
               <div className="grid grid-cols-2 gap-2.5">
                 {([
-                  { label: 'Minutos',    value: stats.minutes.toLocaleString(), icon: Timer       },
-                  { label: 'Días',       value: stats.days,                     icon: CalendarDays },
+                  { label: 'Total en minutos', value: stats.minutes.toLocaleString(), icon: Timer       },
+                  { label: 'Total en días',    value: stats.days,                     icon: CalendarDays },
                   { label: 'Mirando',    value: stats.watching,                 icon: Play         },
                   { label: 'Pendientes', value: stats.pending,                  icon: Clock        },
                 ] as const).map(({ label, value, icon: Icon }) => (
@@ -387,10 +341,10 @@ export const Profile = () => {
             </div>
 
             {/* Top géneros */}
-            <RankingCard title="Géneros Favoritos" data={stats.topGenres} />
+            <GenrePieChart genres={stats.topGenres} />
 
             {/* Top estudios */}
-            <RankingCard title="Estudios Favoritos" data={stats.topStudios} />
+            <StudioBarChart studios={stats.topStudios} />
 
             {/* Actividad reciente (#7) */}
             <ActivityFeed animes={animes} />
