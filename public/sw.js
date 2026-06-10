@@ -1,4 +1,6 @@
-const CACHE = 'kiroku-v1';
+const CACHE = 'kiroku-v2';
+const JIKAN_CACHE = 'kiroku-jikan-v1';
+const JIKAN_CACHE_LIMIT = 150;
 const PRECACHE = ['/', '/logo.png', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -9,16 +11,51 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE && k !== JIKAN_CACHE).map(k => caches.delete(k)))
     )
   );
   clients.claim();
 });
 
+async function trimCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length > maxEntries) await cache.delete(keys[0]);
+}
+
+// Stale-while-revalidate for the Jikan API: serve cached anime data instantly
+// (or fall back to it during outages) while refreshing it in the background.
+function handleJikanRequest(request) {
+  return caches.open(JIKAN_CACHE).then(async cache => {
+    const cached = await cache.match(request);
+
+    const networkFetch = fetch(request).then(resp => {
+      if (resp.status === 200) {
+        cache.put(request, resp.clone());
+        trimCache(JIKAN_CACHE, JIKAN_CACHE_LIMIT);
+      }
+      return resp;
+    });
+
+    if (cached) {
+      networkFetch.catch(() => {});
+      return cached;
+    }
+
+    return networkFetch;
+  });
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
-  if (url.includes('supabase.co') || url.includes('api.jikan.moe')) return;
+
+  if (url.includes('api.jikan.moe')) {
+    e.respondWith(handleJikanRequest(e.request));
+    return;
+  }
+
+  if (url.includes('supabase.co')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => {

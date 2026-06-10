@@ -55,18 +55,19 @@ export const GenrePieChart = ({ genres }: Props) => {
     );
   }
 
-  let cumAngle = 0;
-  const slices = top.map((g, i) => {
-    const span  = (g.count / total) * 2 * Math.PI;
-    const start = cumAngle;
-    cumAngle   += span;
-    return {
-      ...g,
-      color: COLORS[i],
-      pct:   Math.round((g.count / total) * 100),
-      path:  slicePath(47, 16, start, cumAngle),
-    };
-  });
+  // Ángulo acumulado de cada sector, calculado sin mutar estado entre renders
+  const angleEnds = top.reduce<number[]>((ends, g, i) => {
+    const prevEnd = i > 0 ? ends[i - 1] : 0;
+    ends.push(prevEnd + (g.count / total) * 2 * Math.PI);
+    return ends;
+  }, []);
+
+  const slices = top.map((g, i) => ({
+    ...g,
+    color: COLORS[i],
+    pct:   Math.round((g.count / total) * 100),
+    path:  slicePath(47, 16, i > 0 ? angleEnds[i - 1] : 0, angleEnds[i]),
+  }));
 
   const maxCount = top[0]?.count ?? 1;
 

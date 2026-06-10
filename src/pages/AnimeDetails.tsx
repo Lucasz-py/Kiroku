@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { useParams } from 'react-router-dom';
-import { getAnimeById, getAnimeCharacters, getAnimeStreaming } from '../services/jikanApi';
+import { getAnimeById, getAnimeCharacters, getAnimeStreaming, JikanError } from '../services/jikanApi';
 import { getHighResImageUrl } from '../utils/animeUtils';
 import type { AnimeFull, Character } from '../types/anime';
 import { supabase } from '../lib/supabase';
-import type { Session } from '@supabase/supabase-js';
 import { AnimeHeroPanel } from '../components/animeDetails/AnimeHeroPanel';
 import { RelatedContentSection } from '../components/animeDetails/RelatedContentSection';
 import { StreamingSection } from '../components/animeDetails/StreamingSection';
@@ -14,15 +13,21 @@ import { CharactersGrid } from '../components/animeDetails/CharactersGrid';
 import { AnimeDetailsSkeleton } from '../components/animeDetails/AnimeDetailsSkeleton';
 import { useUserData } from '../contexts/UserDataContext';
 
+interface StreamingLink {
+  name: string;
+  url: string;
+}
+
 export const AnimeDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [anime, setAnime] = useState<AnimeFull | null>(null);
   const [characters, setCharacters] = useState<Character[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [streaming, setStreaming] = useState<any[]>([]);
+  const [streaming, setStreaming] = useState<StreamingLink[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
 
-  const [session, setSession] = useState<Session | null>(null);
   const [savedStatus, setSavedStatus] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -32,7 +37,7 @@ export const AnimeDetails = () => {
   const [relatedImages, setRelatedImages] = useState<Record<number, string | null>>({});
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { refreshSavedAnimes } = useUserData();
+  const { session, savedAnimes, refreshSavedAnimes } = useUserData();
 
   const getAvailableStatuses = () => {
     if (!anime) return [];
@@ -42,47 +47,69 @@ export const AnimeDetails = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-      setLoading(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      try {
-        const [animeRes, charsRes, streamingRes] = await Promise.all([
-          getAnimeById(id),
-          getAnimeCharacters(id),
-          getAnimeStreaming(id),
-        ]);
+    if (!id) return;
+    let cancelled = false;
+
+    setLoading(true);
+    setNotFound(false);
+    setLoadError(false);
+    setAnime(null);
+    setCharacters([]);
+    setStreaming([]);
+    setRelatedImages({});
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    getAnimeById(id)
+      .then(animeRes => {
+        if (cancelled) return;
         setAnime(animeRes.data);
+        setLoading(false);
+      })
+      .catch(error => {
+        if (cancelled) return;
+        console.error(error);
+        if (error instanceof JikanError && error.status === 404) setNotFound(true);
+        else setLoadError(true);
+        setLoading(false);
+      });
+
+    // Characters and streaming are non-critical: failures here (e.g. rate limits)
+    // must not prevent the main anime details from being shown.
+    getAnimeCharacters(id)
+      .then(charsRes => {
+        if (cancelled) return;
         const byFav = (a: Character, b: Character) => (b.favorites ?? 0) - (a.favorites ?? 0);
         const mains = charsRes.data.filter(c => c.role === 'Main').sort(byFav);
         const supporting = charsRes.data.filter(c => c.role === 'Supporting').sort(byFav).slice(0, 15);
         setCharacters([...mains, ...supporting]);
+      })
+      .catch(error => console.error(error));
+
+    getAnimeStreaming(id)
+      .then(streamingRes => {
+        if (cancelled) return;
         setStreaming(streamingRes.data || []);
+      })
+      .catch(error => console.error(error));
 
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        setSession(currentSession);
+    return () => { cancelled = true; };
+  }, [id, retryToken]);
 
-        if (currentSession) {
-          const { data: savedData } = await supabase
-            .from('saved_animes')
-            .select('status, is_favorite, progress')
-            .eq('user_id', currentSession.user.id)
-            .eq('anime_id', animeRes.data.mal_id)
-            .maybeSingle();
-          if (savedData) {
-            setSavedStatus(savedData.status);
-            setIsFavorite(savedData.is_favorite);
-            setProgress(savedData.progress || 0);
-          }
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id]);
+  // Saved status comes from the shared user-data context, which already keeps
+  // the user's saved_animes list in sync — avoids a redundant query and any
+  // race condition with auth initialization.
+  useEffect(() => {
+    if (!anime) {
+      setSavedStatus(null);
+      setIsFavorite(false);
+      setProgress(0);
+      return;
+    }
+    const saved = savedAnimes.find(a => a.anime_id === anime.mal_id);
+    setSavedStatus(saved?.status ?? null);
+    setIsFavorite(saved?.is_favorite ?? false);
+    setProgress(saved?.progress ?? 0);
+  }, [anime, savedAnimes]);
 
   useEffect(() => {
     if (!anime?.relations) return;
@@ -205,9 +232,21 @@ export const AnimeDetails = () => {
 
   if (loading) return <AnimeDetailsSkeleton />;
 
-  if (!anime) return (
+  if (notFound) return (
     <div className="flex justify-center items-center h-screen bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest">
       Registro no encontrado.
+    </div>
+  );
+
+  if (loadError || !anime) return (
+    <div className="flex flex-col items-center justify-center gap-4 h-screen bg-[#0D0F15] text-zinc-400 font-bold uppercase tracking-widest text-center px-4">
+      <p>Error al cargar el anime. Intenta de nuevo.</p>
+      <button
+        onClick={() => setRetryToken(t => t + 1)}
+        className="px-6 py-2.5 border border-[#FF3B3B]/30 text-[#FF3B3B] hover:bg-[#FF3B3B] hover:text-white transition-all rounded-xl text-[11px] tracking-widest"
+      >
+        Reintentar
+      </button>
     </div>
   );
 

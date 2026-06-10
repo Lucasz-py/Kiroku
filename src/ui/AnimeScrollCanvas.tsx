@@ -100,20 +100,23 @@ export const AnimeScrollCanvas: React.FC<AnimeScrollCanvasProps> = ({
       }
     });
 
-    const preloadImages = async () => {
-      const loadPromises = Array.from({ length: totalFrames }).map((_, i) => {
-        return new Promise<HTMLImageElement | null>((resolve) => {
-          const img = new Image();
-          const url = getImageUrl(i);
-          img.src = url;
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-        });
-      });
+    const loadImage = (index: number) => new Promise<HTMLImageElement | null>((resolve) => {
+      const img = new Image();
+      img.src = getImageUrl(index);
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+    });
 
-      imagesRef.current = await Promise.all(loadPromises);
+    const preloadImages = async () => {
+      // Load the first frame on its own so the canvas can fade in right away,
+      // then stream the rest of the sequence in the background.
+      imagesRef.current[0] = await loadImage(0);
       setIsLoaded(true);
       handleResize();
+
+      for (let i = 1; i < totalFrames; i++) {
+        loadImage(i).then((img) => { imagesRef.current[i] = img; });
+      }
     };
 
     preloadImages();

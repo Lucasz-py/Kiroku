@@ -62,3 +62,17 @@ export interface Achievement {
   difficulty: number;
   req: (s: UserStats) => boolean;
 }
+
+export interface ProfileComment {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  author: { username: string; avatar_url: string | null } | null;
+}
+
+export interface SocialCounts {
+  followersCount: number;
+  followingCount: number;
+  likesCount: number;
+}

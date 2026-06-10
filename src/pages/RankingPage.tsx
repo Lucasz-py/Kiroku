@@ -50,6 +50,7 @@ export const RankingPage = () => {
   const [hasMore, setHasMore]         = useState(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const headerRef   = useRef<HTMLDivElement>(null);
+  const animesLenRef = useRef(0);
 
   useGSAP(() => {
     gsap.fromTo('.rk-label',
@@ -75,25 +76,29 @@ export const RankingPage = () => {
     try {
       const res = await getTopAnimes(25, jikanFilter, page);
       const newAnimes = res?.data || [];
+      const totalLen = (append ? animesLenRef.current : 0) + newAnimes.length;
+      animesLenRef.current = totalLen;
       setAnimes(prev => append ? [...prev, ...newAnimes] : newAnimes);
-      setHasMore(newAnimes.length === 25 && (append ? (animes.length + newAnimes.length) < 100 : newAnimes.length < 100));
+      setHasMore(newAnimes.length === 25 && totalLen < 100);
     } catch (error) {
       console.error(error);
       setAnimes([]);
+      animesLenRef.current = 0;
       setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [jikanFilter, animes.length]);
+  }, [jikanFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
     setAnimes([]);
+    animesLenRef.current = 0;
     setHasMore(true);
     fetchRankings(1, false);
     window.scrollTo(0, 0);
-  }, [filter, jikanFilter]);
+  }, [filter, jikanFilter, fetchRankings]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;

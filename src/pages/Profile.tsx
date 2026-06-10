@@ -18,11 +18,13 @@ import { ActivityFeed } from '../components/profile/ActivityFeed';
 import { ProfileOnboarding } from '../components/profile/ProfileOnboarding';
 import { GenrePieChart } from '../components/profile/GenrePieChart';
 import { StudioBarChart } from '../components/profile/StudioBarChart';
+import { ProfileComments } from '../components/profile/ProfileComments';
+import { ImportXMLModal } from '../components/profile/ImportXMLModal';
+import { FollowersModal } from '../components/profile/FollowersModal';
+import { useSocialProfile } from '../hooks/useSocialProfile';
 
-// ─── PAGE ────────────────────────────────────────────────────────────────────
 export const Profile = () => {
 
-  // ── STATE ──────────────────────────────────────────────────────────────────
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [animes, setAnimes] = useState<SavedAnime[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,12 +32,16 @@ export const Profile = () => {
   const [newBio, setNewBio] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [followersInitialTab, setFollowersInitialTab] = useState<'followers' | 'following'>('followers');
   const navigate = useNavigate();
 
   const pageRef = useRef<HTMLDivElement>(null);
   const counterRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  // ── DATA FETCH (preserved) ─────────────────────────────────────────────────
+  const social = useSocialProfile(profile?.id ?? null, profile?.id ?? null);
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -74,7 +80,6 @@ export const Profile = () => {
     fetchUserData();
   }, [navigate]);
 
-  // ── HANDLERS (preserved) ───────────────────────────────────────────────────
   const handleSignOut = async () => { await supabase.auth.signOut(); navigate('/'); };
 
   const handleRemove = async (id: string) => {
@@ -128,7 +133,15 @@ export const Profile = () => {
     } finally { setUploadingAvatar(false); }
   };
 
-  // ── STATS useMemo (preserved exactly) ─────────────────────────────────────
+  const handleImportComplete = async () => {
+    if (!profile) return;
+    const { data: animesData } = await supabase
+      .from('saved_animes').select('*')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false });
+    if (animesData) setAnimes(animesData as SavedAnime[]);
+  };
+
   const stats: UserStats = useMemo(() => {
     let episodes = 0, minutes = 0, completed = 0, favorites = 0, pending = 0, watching = 0;
     const genreCounts: Record<string, number> = {};
@@ -169,7 +182,6 @@ export const Profile = () => {
 
   const unlockedAchievements = ACHIEVEMENTS.filter(ach => ach.req(stats));
 
-  // Hero stat tiles: defined before useGSAP so the closure captures current values
   const heroStats = [
     { label: 'Completados',   value: stats.completed, icon: CheckCircle },
     { label: 'Episodios',     value: stats.episodes,  icon: Tv           },
@@ -177,7 +189,6 @@ export const Profile = () => {
     { label: 'Favoritos',     value: stats.favorites, icon: Heart        },
   ];
 
-  // ── GSAP: stagger entrance + numeric counters ──────────────────────────────
   useGSAP(() => {
     if (loading || !pageRef.current) return;
 
@@ -205,7 +216,6 @@ export const Profile = () => {
     });
   }, { scope: pageRef, dependencies: [loading] });
 
-  // ── LOADING ────────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="relative min-h-screen bg-[#080A0F] font-sans">
       <div className="container mx-auto px-4 md:px-8 pt-32 md:pt-36 pb-24 max-w-[1400px]">
@@ -224,15 +234,14 @@ export const Profile = () => {
   );
   if (!profile) return null;
 
-  // Reusable spring transition string for hover effects
   const spring = 'transform 220ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease, border-color 150ms ease';
+  const existingAnimeIds = new Set(animes.map(a => a.anime_id));
 
-  // ── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div ref={pageRef} className="relative min-h-screen bg-[#080A0F] font-sans">
       <div className="relative z-10 container mx-auto px-4 md:px-8 pt-32 md:pt-36 pb-24 max-w-[1400px]">
 
-        {/* ── PROFILE HEADER ─────────────────────────────────────────────── */}
+        {/* ── PROFILE HEADER ─────────────────────────────────────────── */}
         <div className="profile-section mb-10">
           <ProfileHeader
             profile={profile}
@@ -240,6 +249,11 @@ export const Profile = () => {
             newBio={newBio}
             uploadingAvatar={uploadingAvatar}
             uploadingBanner={uploadingBanner}
+            socialCounts={{
+              followersCount: social.followersCount,
+              followingCount: social.followingCount,
+              likesCount: social.likesCount,
+            }}
             onBioChange={setNewBio}
             onEditBio={() => setIsEditingBio(true)}
             onBioSave={handleUpdateBio}
@@ -247,10 +261,14 @@ export const Profile = () => {
             onAvatarUpload={handleAvatarUpload}
             onBannerUpload={handleBannerUpload}
             onSignOut={handleSignOut}
+            onUsernameUpdate={u => setProfile(prev => prev ? { ...prev, username: u } : prev)}
+            onFollowersClick={() => { setFollowersInitialTab('followers'); setShowFollowersModal(true); }}
+            onFollowingClick={() => { setFollowersInitialTab('following'); setShowFollowersModal(true); }}
+            onImportClick={() => setShowImportModal(true)}
           />
         </div>
 
-        {/* ── HERO STATS BAR ─────────────────────────────────────────────── */}
+        {/* ── HERO STATS BAR ─────────────────────────────────────────── */}
         <div className="profile-section grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           {heroStats.map((stat, i) => (
             <div
@@ -270,11 +288,8 @@ export const Profile = () => {
                 el.style.borderColor = '';
               }}
             >
-              {/* Top hairline accent */}
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
-
               <stat.icon size={22} className="text-[#FF3B3B]/40 shrink-0" />
-
               <div className="min-w-0">
                 <p className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-1 truncate">
                   {stat.label}
@@ -290,20 +305,17 @@ export const Profile = () => {
           ))}
         </div>
 
-        {/* ── ONBOARDING (usuario nuevo sin animes) ──────────────────────── */}
+        {/* ── ONBOARDING ─────────────────────────────────────────────── */}
         {animes.length === 0 && (
           <div className="profile-section mb-6">
-            <ProfileOnboarding username={profile.username} />
+            <ProfileOnboarding username={profile.username} onImportClick={() => setShowImportModal(true)} />
           </div>
         )}
 
-        {/* ── MAIN GRID ──────────────────────────────────────────────────── */}
+        {/* ── MAIN GRID ──────────────────────────────────────────────── */}
         <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${animes.length === 0 ? 'hidden' : ''}`}>
 
-          {/* LEFT SIDEBAR ── */}
           <div className="lg:col-span-4 flex flex-col gap-5">
-
-            {/* Secondary metrics */}
             <div className="profile-section bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
                 <Activity size={14} className="text-[#FF3B3B]/50" /> Métricas detalladas
@@ -340,29 +352,47 @@ export const Profile = () => {
               </div>
             </div>
 
-            {/* Top géneros */}
             <GenrePieChart genres={stats.topGenres} />
-
-            {/* Top estudios */}
             <StudioBarChart studios={stats.topStudios} />
-
-            {/* Actividad reciente (#7) */}
             <ActivityFeed animes={animes} />
-
-            {/* Logros */}
             <div className="profile-section">
               <AchievementGallery unlockedAchievements={unlockedAchievements} />
             </div>
-
           </div>
 
-          {/* ANIME GRID ── */}
           <div className="profile-section lg:col-span-8">
             <AnimeGrid animes={animes} onRemove={handleRemove} />
           </div>
+        </div>
 
+        {/* ── COMMENTS ───────────────────────────────────────────────── */}
+        <div className="mt-8">
+          <ProfileComments
+            profileId={profile.id}
+            currentUserId={profile.id}
+            isOwner={true}
+          />
         </div>
       </div>
+
+      {/* ── MODALS ─────────────────────────────────────────────────── */}
+      {showImportModal && (
+        <ImportXMLModal
+          userId={profile.id}
+          existingAnimeIds={existingAnimeIds}
+          onClose={() => setShowImportModal(false)}
+          onImportComplete={handleImportComplete}
+        />
+      )}
+
+      {showFollowersModal && (
+        <FollowersModal
+          profileId={profile.id}
+          profileUsername={profile.username}
+          initialTab={followersInitialTab}
+          onClose={() => setShowFollowersModal(false)}
+        />
+      )}
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import {
   Loader2, Tv, CheckCircle, Heart, Hourglass,
   CalendarDays, Timer, Play, Clock, Activity, ArrowLeft,
+  Users, UserCheck, UserPlus, UserMinus,
 } from 'lucide-react';
 import type { UserProfile, SavedAnime, UserStats } from '../types/profile';
 import { parseDurationToMinutes } from '../utils/animeUtils';
@@ -17,6 +18,9 @@ import { ActivityFeed } from '../components/profile/ActivityFeed';
 import { AnimeGrid } from '../components/profile/AnimeGrid';
 import { GenrePieChart } from '../components/profile/GenrePieChart';
 import { StudioBarChart } from '../components/profile/StudioBarChart';
+import { ProfileComments } from '../components/profile/ProfileComments';
+import { FollowersModal } from '../components/profile/FollowersModal';
+import { useSocialProfile } from '../hooks/useSocialProfile';
 
 const NotFound = ({ username }: { username?: string }) => (
   <div className="min-h-screen bg-[#080A0F] flex flex-col items-center justify-center gap-6 px-4">
@@ -45,6 +49,10 @@ export const PublicProfilePage = () => {
   const [animes, setAnimes] = useState<SavedAnime[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [followersInitialTab, setFollowersInitialTab] = useState<'followers' | 'following'>('followers');
+
+  const currentUserId = session?.user?.id ?? null;
 
   useEffect(() => {
     const checkOwner = async () => {
@@ -83,6 +91,8 @@ export const PublicProfilePage = () => {
     };
     fetchProfile();
   }, [ownerChecked, ownUsername, username]);
+
+  const social = useSocialProfile(profile?.id ?? null, currentUserId);
 
   const stats: UserStats = useMemo(() => {
     let episodes = 0, minutes = 0, completed = 0, favorites = 0, pending = 0, watching = 0;
@@ -160,6 +170,8 @@ export const PublicProfilePage = () => {
   if (ownUsername === username) return <Profile />;
   if (notFound || !profile) return <NotFound username={username} />;
 
+  const isOwner = false;
+
   return (
     <div ref={pageRef} className="min-h-screen bg-[#080A0F] font-sans">
       <div className="container mx-auto px-4 md:px-8 pt-32 md:pt-36 pb-24 max-w-[1400px]">
@@ -172,7 +184,7 @@ export const PublicProfilePage = () => {
           <ArrowLeft size={14} /> Volver
         </Link>
 
-        {/* Profile header — [transform:translateZ(0)] fix línea negra (backdrop-blur + overflow:hidden + border-radius) */}
+        {/* Profile header */}
         <div className="profile-section relative mb-8 rounded-2xl border border-[#FF3B3B]/20 overflow-hidden [transform:translateZ(0)]">
           {profile.banner_url && (
             <img src={profile.banner_url} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
@@ -180,12 +192,14 @@ export const PublicProfilePage = () => {
           <div className={`absolute inset-0 ${profile.banner_url ? 'bg-[#0D0F15]/70 backdrop-blur-[2px]' : 'bg-[#11131A]/90'}`} />
 
           <div className="relative z-10 p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
+            {/* Avatar */}
             <div className="shrink-0 w-36 h-36 md:w-48 md:h-48 bg-[#11131A] flex items-center justify-center text-6xl font-black text-white rounded-xl border-4 border-[#0D0F15]/60 overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.7)]">
               {profile.avatar_url
                 ? <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 : profile.username?.charAt(0).toUpperCase()}
             </div>
 
+            {/* Info */}
             <div className="flex-1 text-center md:text-left pt-2 md:pt-4">
               <p className="text-xs font-bold uppercase tracking-widest text-[#FF3B3B]/60 mb-1 flex items-center justify-center md:justify-start gap-1.5">
                 <Activity size={11} /> Perfil público
@@ -194,14 +208,42 @@ export const PublicProfilePage = () => {
                 {profile.username}
               </h1>
               {profile.bio && (
-                <p className="text-zinc-400 text-sm leading-relaxed max-w-2xl bg-[#0D0F15]/60 backdrop-blur-sm p-4 rounded-lg border-l-2 border-[#FF3B3B]/30">
+                <p className="text-zinc-400 text-sm leading-relaxed max-w-2xl bg-[#0D0F15]/60 backdrop-blur-sm p-4 rounded-lg border-l-2 border-[#FF3B3B]/30 mb-4">
                   {profile.bio}
                 </p>
               )}
+
+              {/* Social counts */}
+              <div className="flex items-center gap-4 justify-center md:justify-start">
+                <button
+                  onClick={() => { setFollowersInitialTab('followers'); setShowFollowersModal(true); }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-white transition-colors"
+                >
+                  <Users size={13} className="text-[#FF3B3B]/40" />
+                  <span className="text-white font-black">{social.followersCount}</span>
+                  Seguidores
+                </button>
+                <span className="text-zinc-700">·</span>
+                <button
+                  onClick={() => { setFollowersInitialTab('following'); setShowFollowersModal(true); }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-white transition-colors"
+                >
+                  <UserCheck size={13} className="text-[#FF3B3B]/40" />
+                  <span className="text-white font-black">{social.followingCount}</span>
+                  Siguiendo
+                </button>
+                <span className="text-zinc-700">·</span>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-zinc-500">
+                  <Heart size={13} className="text-[#FF3B3B]/40" />
+                  <span className="text-white font-black">{social.likesCount}</span>
+                  Me gustas
+                </span>
+              </div>
             </div>
 
-            {/* Quick totals */}
-            <div className="shrink-0 flex flex-col gap-2 text-right">
+            {/* Right actions */}
+            <div className="shrink-0 flex flex-col gap-2">
+              {/* Quick totals */}
               <div className="bg-[#0D0F15]/80 border border-[#FF3B3B]/10 rounded-xl px-5 py-3 text-center">
                 <span className="block text-2xl font-black text-white tabular-nums">{animes.length}</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">en lista</span>
@@ -210,6 +252,41 @@ export const PublicProfilePage = () => {
                 <span className="block text-2xl font-black text-white tabular-nums">{unlockedAchievements.length}</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">logros</span>
               </div>
+
+              {/* Follow button */}
+              {currentUserId && (
+                <button
+                  onClick={social.toggleFollow}
+                  disabled={social.loading}
+                  className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                    social.isFollowing
+                      ? 'bg-[#FF3B3B]/10 border border-[#FF3B3B]/30 text-[#FF3B3B] hover:bg-[#FF3B3B]/20'
+                      : 'bg-[#FF3B3B] text-white hover:bg-[#FF6B6B]'
+                  } disabled:opacity-50`}
+                >
+                  {social.isFollowing ? (
+                    <><UserMinus size={14} /> Siguiendo</>
+                  ) : (
+                    <><UserPlus size={14} /> Seguir</>
+                  )}
+                </button>
+              )}
+
+              {/* Like button */}
+              {currentUserId && (
+                <button
+                  onClick={social.toggleLike}
+                  disabled={social.loading}
+                  className={`flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all border ${
+                    social.isLiked
+                      ? 'bg-[#FF3B3B]/10 border-[#FF3B3B]/40 text-[#FF3B3B]'
+                      : 'border-[#FF3B3B]/15 text-zinc-500 hover:border-[#FF3B3B]/40 hover:text-[#FF3B3B] hover:bg-[#FF3B3B]/5'
+                  } disabled:opacity-50`}
+                >
+                  <Heart size={14} className={social.isLiked ? 'fill-current' : ''} />
+                  {social.isLiked ? 'Te gusta' : 'Me gusta'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -238,11 +315,7 @@ export const PublicProfilePage = () => {
 
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          {/* Left sidebar */}
           <div className="lg:col-span-4 flex flex-col gap-5">
-
-            {/* Métricas detalladas */}
             <div className="profile-section bg-[#11131A] border border-[#FF3B3B]/10 rounded-2xl p-6">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-5 flex items-center gap-2">
                 <Activity size={14} className="text-[#FF3B3B]/50" /> Métricas detalladas
@@ -263,22 +336,35 @@ export const PublicProfilePage = () => {
               </div>
             </div>
 
-            {/* Géneros — pie chart con animaciones sincronizadas */}
             <GenrePieChart genres={stats.topGenres} />
-
-            {/* Estudios — bar chart con animación de entrada */}
             <StudioBarChart studios={stats.topStudios} />
-
             <div className="profile-section"><ActivityFeed animes={animes} /></div>
             <div className="profile-section"><AchievementGallery unlockedAchievements={unlockedAchievements} /></div>
           </div>
 
-          {/* Anime grid (read-only) */}
           <div className="profile-section lg:col-span-8">
             <AnimeGrid animes={animes} />
           </div>
         </div>
+
+        {/* Comments */}
+        <div className="mt-8">
+          <ProfileComments
+            profileId={profile.id}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+          />
+        </div>
       </div>
+
+      {showFollowersModal && (
+        <FollowersModal
+          profileId={profile.id}
+          profileUsername={profile.username}
+          initialTab={followersInitialTab}
+          onClose={() => setShowFollowersModal(false)}
+        />
+      )}
     </div>
   );
 };

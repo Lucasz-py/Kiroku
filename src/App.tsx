@@ -1,19 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useUserData } from './contexts/UserDataContext';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { BottomNav } from './components/BottomNav';
 import { LoginModal } from './components/LoginModal';
+import { UsernameSetupModal } from './components/UsernameSetupModal';
 import { Home } from './pages/Home';
-import { Search } from './pages/Search';
-import { AnimeDetails } from './pages/AnimeDetails';
-import { Profile } from './pages/Profile';
-import { RankingPage } from './pages/RankingPage';
-import { SeasonalPage } from './pages/SeasonalPage';
-import { WatchlistPage } from './pages/WatchlistPage';
-import { PublicProfilePage } from './pages/PublicProfilePage';
 import { UserDataProvider } from './contexts/UserDataContext';
+
+const Search = lazy(() => import('./pages/Search').then(m => ({ default: m.Search })));
+const AnimeDetails = lazy(() => import('./pages/AnimeDetails').then(m => ({ default: m.AnimeDetails })));
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const RankingPage = lazy(() => import('./pages/RankingPage').then(m => ({ default: m.RankingPage })));
+const SeasonalPage = lazy(() => import('./pages/SeasonalPage').then(m => ({ default: m.SeasonalPage })));
+const WatchlistPage = lazy(() => import('./pages/WatchlistPage').then(m => ({ default: m.WatchlistPage })));
+const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage').then(m => ({ default: m.PublicProfilePage })));
+
+const PageLoader = () => (
+  <div className="flex justify-center items-center min-h-[60vh]">
+    <Loader2 className="animate-spin text-[#FF3B3B]" size={28} />
+  </div>
+);
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -32,7 +42,8 @@ const AnimatedRoutes = () => {
 
   useEffect(() => {
     if (location.pathname !== prevPathname.current) {
-      // Cambio real de página → transición completa
+      // Cambio real de página → transición completa (timing controlado por setTimeout)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTransitionStage('exit');
       const timer = setTimeout(() => {
         setDisplayLocation(location);
@@ -52,22 +63,25 @@ const AnimatedRoutes = () => {
       className={transitionStage === 'enter' ? 'page-enter' : 'page-exit'}
       style={{ minHeight: '100%' }}
     >
-      <Routes location={displayLocation}>
-        <Route path="/"             element={<Home />} />
-        <Route path="/search"       element={<Search />} />
-        <Route path="/anime/:id"    element={<AnimeDetails />} />
-        <Route path="/profile"      element={<Profile />} />
-        <Route path="/top/:filter"  element={<RankingPage />} />
-        <Route path="/seasonal"     element={<SeasonalPage />} />
-        <Route path="/watchlist"    element={<WatchlistPage />} />
-        <Route path="/u/:username"  element={<PublicProfilePage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes location={displayLocation}>
+          <Route path="/"             element={<Home />} />
+          <Route path="/search"       element={<Search />} />
+          <Route path="/anime/:id"    element={<AnimeDetails />} />
+          <Route path="/profile"      element={<Profile />} />
+          <Route path="/top/:filter"  element={<RankingPage />} />
+          <Route path="/seasonal"     element={<SeasonalPage />} />
+          <Route path="/watchlist"    element={<WatchlistPage />} />
+          <Route path="/u/:username"  element={<PublicProfilePage />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 };
 
 const AppContent = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const { needsUsernameSetup, authReady } = useUserData();
   return (
     <div className="min-h-screen bg-[#080A0F] text-zinc-100 flex flex-col font-sans relative">
       <Header onOpenLogin={() => setIsLoginOpen(true)} />
@@ -77,6 +91,7 @@ const AppContent = () => {
       <Footer />
       <BottomNav onOpenLogin={() => setIsLoginOpen(true)} />
       <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+      {authReady && needsUsernameSetup && <UsernameSetupModal />}
       <Toaster
         position="bottom-right"
         toastOptions={{

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Search, Trophy, CalendarDays, BookOpen, ArrowRight } from 'lucide-react';
+import { Search, Trophy, CalendarDays, BookOpen, ArrowRight, Upload, Sparkles } from 'lucide-react';
 
 const steps = [
   {
@@ -61,7 +61,7 @@ const HowItWorksCard = () => (
   </div>
 );
 
-export const ProfileOnboarding = ({ username }: { username: string }) => (
+export const ProfileOnboarding = ({ username, onImportClick }: { username: string; onImportClick?: () => void }) => (
   <div className="flex flex-col gap-6">
 
     {/* Bienvenida */}
@@ -76,6 +76,34 @@ export const ProfileOnboarding = ({ username }: { username: string }) => (
         Tu lista está vacía. Empieza agregando animes para llevar el control de lo que ves y desbloquear estadísticas y logros.
       </p>
     </div>
+
+    {/* Importar desde MyAnimeList — destacado */}
+    {onImportClick && (
+      <div className="bg-gradient-to-br from-[#FF3B3B]/15 via-[#11131A] to-[#11131A] border border-[#FF3B3B]/40 rounded-2xl p-8 md:p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-6 md:gap-10 justify-between">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/50 to-transparent" />
+        <div className="absolute -left-20 -bottom-20 w-72 h-72 rounded-full bg-[#FF3B3B]/[0.08] blur-3xl pointer-events-none" />
+        <div className="relative flex items-start gap-4">
+          <div className="w-12 h-12 shrink-0 rounded-xl bg-[#FF3B3B]/15 border border-[#FF3B3B]/30 flex items-center justify-center">
+            <Upload size={20} className="text-[#FF3B3B]" />
+          </div>
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-[#FF3B3B] mb-2">
+              <Sparkles size={12} /> Atajo recomendado
+            </p>
+            <h3 className="text-white font-black text-xl mb-2">¿Ya tenés una lista en MyAnimeList?</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed max-w-md">
+              Importá tu lista exportada (.xml o .xml.gz) y armá tu perfil, estadísticas y logros al instante, sin agregar animes uno por uno.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onImportClick}
+          className="relative shrink-0 inline-flex items-center gap-2 px-6 py-3.5 bg-[#FF3B3B] hover:bg-[#FF5555] text-white rounded-xl font-black text-xs uppercase tracking-widest transition-colors shadow-[0_8px_30px_rgba(255,59,59,0.25)]"
+        >
+          <Upload size={15} /> Importar mi lista
+        </button>
+      </div>
+    )}
 
     {/* Pasos */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

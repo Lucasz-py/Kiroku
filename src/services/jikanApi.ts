@@ -3,12 +3,24 @@ import type { JikanResponse, JikanFullResponse, AnimeCharactersResponse, Anime }
 
 const BASE_URL = 'https://api.jikan.moe/v4';
 
-// Retry on 429 with exponential backoff before propagating
+// Thrown when a Jikan request fails, carrying the HTTP status so callers
+// can distinguish a real 404 (not found) from rate limits / network errors.
+export class JikanError extends Error {
+  status: number;
+  constructor(status: number) {
+    super(`Jikan request failed with status ${status}`);
+    this.name = 'JikanError';
+    this.status = status;
+  }
+}
+
+// Retry on 429 (rate limit) and 5xx (Jikan is often briefly unavailable) with
+// exponential backoff before propagating the error to the caller.
 async function jikanFetch(url: string): Promise<Response> {
   const delays = [900, 1800, 3600, 7200];
   for (let i = 0; i < delays.length; i++) {
     const res = await fetch(url);
-    if (res.status !== 429) return res;
+    if (res.status !== 429 && res.status < 500) return res;
     await new Promise(r => setTimeout(r, delays[i]));
   }
   return fetch(url);
@@ -16,7 +28,7 @@ async function jikanFetch(url: string): Promise<Response> {
 
 async function jikanGet<T>(url: string): Promise<T> {
   const res = await jikanFetch(url);
-  if (!res.ok) throw new Error(`Jikan ${res.status}`);
+  if (!res.ok) throw new JikanError(res.status);
   return res.json() as Promise<T>;
 }
 
@@ -53,13 +65,14 @@ export const getAnimeById = (id: string): Promise<JikanFullResponse> =>
   cachedFetch(`anime:${id}`, () => jikanGet(`${BASE_URL}/anime/${id}/full`), 30 * 60 * 1000);
 
 export const getAnimeCharacters = (id: string): Promise<AnimeCharactersResponse> =>
-  cachedFetch(`chars:${id}`, () => jikanGet(`${BASE_URL}/anime/${id}/characters`), 30 * 60 * 1000);
+  cachedFetch(`chars:${id}`, () => jikanGet(`${BASE_URL}/anime/${id}/characters`), 30 * 60 * 1000, true);
 
-export const getAnimeStreaming = (id: string) =>
+export const getAnimeStreaming = (id: string): Promise<{ data: { name: string; url: string }[] }> =>
   cachedFetch(
     `streaming:${id}`,
-    () => jikanFetch(`${BASE_URL}/anime/${id}/streaming`).then(r => r.json()),
+    () => jikanGet(`${BASE_URL}/anime/${id}/streaming`),
     60 * 60 * 1000,
+    true,
   );
 
 export const searchAnime = (query: string, limit = 10): Promise<JikanResponse> =>

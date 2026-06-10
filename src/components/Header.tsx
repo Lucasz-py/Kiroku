@@ -4,18 +4,10 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { searchAnime } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
 import debounce from 'lodash.debounce';
-import { supabase } from '../lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+import { useUserData } from '../contexts/UserDataContext';
 
 interface HeaderProps {
   onOpenLogin: () => void;
-}
-
-interface UserProfile {
-  id: string;
-  username: string | null;
-  email: string | null;
-  avatar_url: string | null;
 }
 
 const NAV_LINKS = [
@@ -29,30 +21,17 @@ export const Header = ({ onOpenLogin }: HeaderProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [instantResults, setInstantResults] = useState<Anime[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { session, username, avatarUrl } = useUserData();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const dropdownRef = useRef<HTMLFormElement>(null);
 
-  // Close mobile menu on route change
-  useEffect(() => { setIsMobileMenuOpen(false); }, [pathname]);
-
-  useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (data) setProfile(data as UserProfile);
-    };
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id); else setProfile(null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  // Close mobile menu on route change (adjust state during render, avoids an extra effect pass)
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+  }
 
   const debouncedFetchResults = useMemo(
     () => debounce(async (query: string) => {
@@ -175,17 +154,17 @@ export const Header = ({ onOpenLogin }: HeaderProps) => {
         <div className="ml-auto flex items-center gap-2 md:gap-3 shrink-0">
           {session ? (
             <Link
-              to={profile?.username ? `/u/${profile.username}` : '/profile'}
+              to={username ? `/u/${username}` : '/profile'}
               className="flex items-center gap-2 md:gap-3 bg-[#11131A]/80 px-3 md:px-4 py-2 border border-[#FF3B3B]/20 hover:border-[#FF3B3B]/50 hover:shadow-[0_0_15px_rgba(255,59,59,0.15)] transition-all cursor-pointer group rounded-lg"
             >
               <div className="w-6 h-6 md:w-7 md:h-7 overflow-hidden flex items-center justify-center font-black text-white text-[10px] uppercase bg-[#FF3B3B] rounded-md shrink-0">
-                {profile?.avatar_url
-                  ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                  : (profile?.username?.charAt(0) || session.user.email?.charAt(0))
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  : (username?.charAt(0) || session.user.email?.charAt(0))
                 }
               </div>
               <span className="hidden sm:inline text-[10px] font-bold tracking-widest uppercase text-zinc-400 group-hover:text-[#FF3B3B] transition-colors">
-                {profile?.username || 'Perfil'}
+                {username || 'Perfil'}
               </span>
             </Link>
           ) : (
