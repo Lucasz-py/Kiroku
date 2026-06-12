@@ -74,18 +74,38 @@ export const AnimeSaveControls = ({
                 <label className="text-[10px] text-[#FF3B3B] font-mono uppercase tracking-widest text-center">
                   Episodios Vistos
                 </label>
-                <div className="flex items-center justify-center gap-3">
+                
+                {/* Solución de Flechas Personalizadas y ocultamiento de default spinners */}
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onProgressChange(Math.max(0, progress - 1))}
+                    className="w-8 h-8 flex items-center justify-center bg-[#1A1C24] text-zinc-400 border border-[#FF3B3B]/15 hover:text-[#FF3B3B] hover:bg-[#FF3B3B]/10 hover:border-[#FF3B3B]/30 transition-colors rounded-lg font-black"
+                  >
+                    -
+                  </button>
+                  
                   <input
                     type="number"
                     min="0"
                     max={anime.episodes || 9999}
                     value={progress}
-                    onChange={(e) => onProgressChange(Number(e.target.value))}
-                    className="w-16 bg-[#1A1C24] border border-[#FF3B3B]/20 text-white p-2 text-center text-sm focus:border-[#FF3B3B] focus:outline-none font-mono rounded-lg"
+                    onChange={(e) => onProgressChange(e.target.value === '' ? 0 : parseInt(e.target.value, 10))}
+                    className="w-16 bg-[#1A1C24] border border-[#FF3B3B]/20 text-white p-1.5 text-center text-sm focus:border-[#FF3B3B] focus:outline-none font-mono rounded-lg [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
                     autoFocus
                   />
-                  <span className="text-zinc-500 font-mono text-sm">/ {anime.episodes || '?'}</span>
+                  
+                  <button
+                    type="button"
+                    onClick={() => onProgressChange((anime.episodes && progress >= anime.episodes) ? progress : progress + 1)}
+                    className="w-8 h-8 flex items-center justify-center bg-[#1A1C24] text-zinc-400 border border-[#FF3B3B]/15 hover:text-[#FF3B3B] hover:bg-[#FF3B3B]/10 hover:border-[#FF3B3B]/30 transition-colors rounded-lg font-black"
+                  >
+                    +
+                  </button>
+                  
+                  <span className="text-zinc-500 font-mono text-sm ml-1">/ {anime.episodes || '?'}</span>
                 </div>
+
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => onPendingStatus(null)}

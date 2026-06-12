@@ -51,7 +51,7 @@ const Synopsis = ({ text }: { text: string }) => {
   );
 };
 
-// Widget de puntuación de usuario (#2)
+// Widget de puntuación de usuario corregido (Método Hitboxes Invisibles)
 const UserScoreWidget = ({ animeId, savedStatus }: { animeId: number; savedStatus: string | null }) => {
   const { getUserScore, session, refreshSavedAnimes } = useUserData();
   const currentScore = getUserScore(animeId);
@@ -73,11 +73,6 @@ const UserScoreWidget = ({ animeId, savedStatus }: { animeId: number; savedStatu
     finally { setSaving(false); }
   };
 
-  const resolveScore = (e: React.MouseEvent<HTMLButtonElement>, val: number) => {
-    const { left, width } = e.currentTarget.getBoundingClientRect();
-    return e.clientX - left < width / 2 ? val - 0.5 : val;
-  };
-
   const display = hover || currentScore || 0;
 
   const getStarFill = (val: number) => {
@@ -97,27 +92,46 @@ const UserScoreWidget = ({ animeId, savedStatus }: { animeId: number; savedStatu
           const val = i + 1;
           const fill = getStarFill(val);
           return (
-            <button
-              key={val}
-              disabled={saving}
-              onClick={(e) => handleRate(resolveScore(e, val))}
-              onMouseMove={(e) => setHover(resolveScore(e, val))}
-              className="relative w-4 h-4 shrink-0 flex items-center justify-center"
-            >
-              {fill === 'half' ? (
-                <>
-                  <Star size={14} className="text-zinc-700 absolute" />
-                  <span className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
-                    <Star size={14} className="text-[#FF3B3B] fill-[#FF3B3B]" />
-                  </span>
-                </>
-              ) : (
-                <Star
-                  size={14}
-                  className={fill === 'full' ? 'text-[#FF3B3B] fill-[#FF3B3B]' : 'text-zinc-700'}
+            <div key={val} className="relative w-4 h-4 shrink-0 flex items-center justify-center">
+              
+              {/* Parte Visual de la Estrella (Capa del Fondo) */}
+              <div className="relative w-[14px] h-[14px] pointer-events-none">
+                {fill === 'half' ? (
+                  <>
+                    <Star size={14} className="text-zinc-700 absolute inset-0" />
+                    <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: '50%' }}>
+                      <Star size={14} className="text-[#FF3B3B] fill-[#FF3B3B] absolute inset-0 min-w-[14px]" />
+                    </div>
+                  </>
+                ) : (
+                  <Star
+                    size={14}
+                    className={`absolute inset-0 ${fill === 'full' ? 'text-[#FF3B3B] fill-[#FF3B3B]' : 'text-zinc-700'}`}
+                  />
+                )}
+              </div>
+
+              {/* Botones Invisibles para capturar clicks precisos (Capa Superior) */}
+              <div className="absolute inset-0 flex z-10">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onMouseEnter={() => setHover(val - 0.5)}
+                  onClick={() => handleRate(val - 0.5)}
+                  className="w-1/2 h-full cursor-pointer disabled:cursor-not-allowed focus:outline-none"
+                  aria-label={`Puntuar ${val - 0.5}`}
                 />
-              )}
-            </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onMouseEnter={() => setHover(val)}
+                  onClick={() => handleRate(val)}
+                  className="w-1/2 h-full cursor-pointer disabled:cursor-not-allowed focus:outline-none"
+                  aria-label={`Puntuar ${val}`}
+                />
+              </div>
+              
+            </div>
           );
         })}
         <span className="text-[#FF3B3B] font-black text-sm ml-2 tabular-nums w-7 text-left">
@@ -226,7 +240,7 @@ export const AnimeHeroPanel = ({
             <div className="text-[11px] text-zinc-500 uppercase tracking-widest mt-1 font-bold">Puntuación Global</div>
           </div>
 
-          {/* Rating del usuario (#2) */}
+          {/* Rating del usuario */}
           <UserScoreWidget animeId={anime.mal_id} savedStatus={savedStatus} />
 
           <AnimeSaveControls

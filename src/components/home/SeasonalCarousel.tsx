@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Tv, ChevronRight } from 'lucide-react';
+import { Tv, ChevronRight, Calendar, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Anime } from '../../types/anime';
 import { AnimeCard } from '../AnimeCard';
@@ -19,6 +19,23 @@ const SkeletonAnimeCard = () => (
   </div>
 );
 
+// NUEVO: Tipado estricto para evitar el uso de 'any'
+type Season = 'winter' | 'spring' | 'summer' | 'fall';
+
+const getNextSeasonInfo = (year: number, season: string) => {
+  const seasonsOrder: Season[] = ['winter', 'spring', 'summer', 'fall'];
+  const labels: Record<Season, string> = { winter: 'INVIERNO', spring: 'PRIMAVERA', summer: 'VERANO', fall: 'OTOÑO' };
+  
+  const idx = seasonsOrder.indexOf(season as Season);
+  if (idx === -1) return { year, season: 'winter', label: 'INVIERNO' }; // Fallback de seguridad
+  
+  if (idx === 3) {
+    return { year: year + 1, season: 'winter', label: labels['winter'] };
+  }
+  const nextSeason = seasonsOrder[idx + 1];
+  return { year, season: nextSeason, label: labels[nextSeason] };
+};
+
 export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
   const carouselRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -27,7 +44,8 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
   const scrollLeftPos = useRef(0);
   const [isDraggingUI, setIsDraggingUI] = useState(false);
 
-  const { year, label } = getCurrentSeason();
+  const { year, label, season } = getCurrentSeason();
+  const nextSeason = getNextSeasonInfo(year, season); // Calculamos la próxima temporada
   const isLoading = upcoming.length === 0;
 
   useEffect(() => {
@@ -78,13 +96,12 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
     <section className="estrenos-section reveal-section relative z-20 bg-[#11131A] -mt-[120px] pt-[160px] pb-40">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/15 to-transparent" />
 
-      {/* Glow ambiente — conecta visualmente con el hero */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-72 z-0"
         style={{ background: 'radial-gradient(ellipse 70% 100% at 50% 0%, rgba(255,59,59,0.055) 0%, transparent 70%)' }}
       />
 
-      <div className="section-content">
+      <div className="section-content relative z-10">
         <div className="container mx-auto px-4 md:px-8 max-w-[1400px] mb-8">
           <p className="seasonal-label text-sm font-bold uppercase tracking-widest text-zinc-500 mb-3 flex items-center gap-2 leading-none">
             <Tv size={15} className="text-[#FF3B3B]/50 shrink-0" /> Esta temporada
@@ -107,7 +124,7 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
           </div>
         </div>
 
-        <div className="seasonal-carousel relative w-full">
+        <div className="seasonal-carousel relative w-full mb-10">
           <div
             ref={carouselRef}
             onMouseDown={handleMouseDown}
@@ -131,6 +148,40 @@ export const SeasonalCarousel = ({ upcoming }: SeasonalCarouselProps) => {
           <div className="pointer-events-none absolute inset-y-0 left-0 w-24 md:w-40 bg-gradient-to-r from-[#11131A] via-[#11131A]/60 to-transparent z-10" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-24 md:w-40 bg-gradient-to-l from-[#11131A] via-[#11131A]/60 to-transparent z-10" />
         </div>
+
+        {/* ── NUEVO COMPONENTE INTEGRADO (Sin romper la animación GSAP) ── */}
+        <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
+          <Link 
+            to={`/seasonal?year=${nextSeason.year}&season=${nextSeason.season}`}
+            className="group block relative w-full bg-[#0D0F15]/60 backdrop-blur-sm border border-[#FF3B3B]/10 hover:border-[#FF3B3B]/30 rounded-2xl p-6 md:p-8 overflow-hidden transition-all duration-300 shadow-md"
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#FF3B3B]/20 to-transparent" />
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[#11131A] border border-[#FF3B3B]/15 text-[#FF3B3B] rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-inner">
+                  <Calendar size={22} />
+                </div>
+                <div>
+                  <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">
+                    Próxima parada
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">
+                    Ver estrenos de la siguiente temporada:{' '}
+                    <span className="text-[#FF3B3B] group-hover:text-[#FF5555] transition-colors">
+                      {nextSeason.label} {nextSeason.year}
+                    </span>
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 self-end sm:self-center bg-[#11131A] border border-[#FF3B3B]/15 group-hover:bg-[#FF3B3B] group-hover:text-white group-hover:border-[#FF3B3B] text-zinc-400 px-5 py-2.5 font-bold uppercase tracking-widest text-[11px] rounded-xl transition-all duration-300">
+                Explorar <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </Link>
+        </div>
+
       </div>
     </section>
   );

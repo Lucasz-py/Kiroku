@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom'; // <-- NUEVO
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Plus } from 'lucide-react';
 import { getCurrentSeason, getSeasonAnimes, getSeasonLabel } from '../services/jikanApi';
 import type { Anime } from '../types/anime';
@@ -21,10 +22,13 @@ const getNextSeason = (year: number, season: Season): { year: number; season: Se
   return { year, season: SEASONS[idx + 1] };
 };
 
-const isSeasonBeyondCurrent = (year: number, season: Season): boolean => {
-  const { year: curYear, season: curSeason } = getCurrentSeason();
-  if (year > curYear) return true;
-  if (year === curYear) return SEASONS.indexOf(season) > SEASONS.indexOf(curSeason as Season);
+// Modificado: Ahora el límite máximo permitido es exactamente la Siguiente Temporada
+const isSeasonBeyondNext = (year: number, season: Season): boolean => {
+  const current = getCurrentSeason();
+  const next = getNextSeason(current.year, current.season as Season);
+  
+  if (year > next.year) return true;
+  if (year === next.year) return SEASONS.indexOf(season) > SEASONS.indexOf(next.season);
   return false;
 };
 
@@ -45,9 +49,15 @@ const SkeletonCard = () => (
 );
 
 export const SeasonalPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams(); // <-- NUEVO
   const current = getCurrentSeason();
-  const [year, setYear] = useState(current.year);
-  const [season, setSeason] = useState<Season>(current.season as Season);
+  
+  // Inicializa leyendo la URL si existen parámetros; de lo contrario, usa la temporada actual
+  const initialYear = searchParams.get('year') ? parseInt(searchParams.get('year')!, 10) : current.year;
+  const initialSeason = (searchParams.get('season') as Season) || (current.season as Season);
+
+  const [year, setYear] = useState(initialYear);
+  const [season, setSeason] = useState<Season>(initialSeason);
   const [typeFilter, setTypeFilter] = useState('');
   const [animes, setAnimes] = useState<Anime[]>([]);
   const [page, setPage] = useState(1);
@@ -57,20 +67,18 @@ export const SeasonalPage = () => {
   const fetchIdRef  = useRef(0);
   const headerRef   = useRef<HTMLDivElement>(null);
 
-  // Anima el título en cada cambio de temporada — se repite al navegar entre seasons
+  // Sincroniza los estados internos si los parámetros de la URL cambian externamente
+  useEffect(() => {
+    const urlYear = searchParams.get('year');
+    const urlSeason = searchParams.get('season') as Season;
+    if (urlYear) setYear(parseInt(urlYear, 10));
+    if (urlSeason && SEASONS.includes(urlSeason)) setSeason(urlSeason);
+  }, [searchParams]);
+
   useGSAP(() => {
-    gsap.fromTo('.sea-label',
-      { opacity: 0, y: 10 },
-      { opacity: 1, y: 0, duration: 0.45, ease: 'power4.out' }
-    );
-    gsap.fromTo('.sea-title',
-      { opacity: 0, y: 22, scale: 0.97 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'power4.out', delay: 0.08 }
-    );
-    gsap.fromTo('.sea-nav',
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.18 }
-    );
+    gsap.fromTo('.sea-label', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power4.out' });
+    gsap.fromTo('.sea-title', { opacity: 0, y: 22, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'power4.out', delay: 0.08 });
+    gsap.fromTo('.sea-nav', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.18 });
   }, { scope: headerRef, dependencies: [year, season] });
 
   const fetchAnimes = useCallback(async (
@@ -110,6 +118,8 @@ export const SeasonalPage = () => {
     const nav = dir === 'prev' ? getPrevSeason(year, season) : getNextSeason(year, season);
     setYear(nav.year);
     setSeason(nav.season);
+    // Setea los parámetros en la URL para mantener el historial sincronizado
+    setSearchParams({ year: nav.year.toString(), season: nav.season });
   };
 
   const handleLoadMore = () => {
@@ -119,7 +129,8 @@ export const SeasonalPage = () => {
   };
 
   const next = getNextSeason(year, season);
-  const canGoNext = !isSeasonBeyondCurrent(next.year, next.season);
+  // Usa la nueva regla de validación de límite
+  const canGoNext = !isSeasonBeyondNext(next.year, next.season);
 
   return (
     <div className="min-h-screen bg-[#080A0F] pt-28 md:pt-32 pb-24 px-4 font-sans">
